@@ -19,7 +19,7 @@ module DCGame
     SPRITE_HEIGHT = 8
     SPRITE_WIDTH = 8
 
-    SPRITE_STRETCH = 4
+    SPRITE_STRETCH = 8
 
     TILE_WIDTH = SPRITE_WIDTH*SPRITE_STRETCH
     TILE_HEIGHT = SPRITE_HEIGHT*SPRITE_STRETCH
@@ -64,7 +64,7 @@ module DCGame
       TILES_WIDE.times do |x|
         TILES_HIGH.times do |y|
           #if game.settings.map[@offset[0]+x][@offset[1]+y] != :empty
-          if game.settings.map.tile_at @offset[0]+x,@offset[1]+y != :empty
+          if game.settings.map.tile_at(@offset[0]+x,@offset[1]+y) != :empty
             draw_tile 0,0, [x,y]
           else
             draw_tile 12,0, [x,y]
@@ -102,8 +102,8 @@ module DCGame
       game = @connection.game
       #game.state.chars.each_pair do |key, val| 
 
-      game.settings.map.each_index do |x|
-        game.settings.map.each_index do |y|
+      game.settings.map.width.times do |x|
+        game.settings.map.height.times do |y|
           if on_screen? x,y
             unless game.shadows.lit? x,y
               draw_tile 5,9, screen_location(x,y)
@@ -188,8 +188,8 @@ module DCGame
       @cursor.each_index do |i|
         @cursor[i] = 0 if @cursor[i] < 0
       end
-      @cursor[0] -= 1 while @cursor[0] >= @connection.game.settings.map.length
-      @cursor[1] -= 1 while @cursor[1] >= @connection.game.settings.map[0].length
+      @cursor[0] -= 1 while @cursor[0] >= @connection.game.settings.map.width
+      @cursor[1] -= 1 while @cursor[1] >= @connection.game.settings.map.height
 
 
       @offset[0] -= 1 while @cursor[0] < @offset[0]

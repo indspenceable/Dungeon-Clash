@@ -55,9 +55,9 @@ module DCGame
       $LOGGER.debug "We are calling finalize_player on the server side."
       @finalized_players[player] = true
 
-      1.times do
+      5.times do
         loc = [rand(10), rand(10)]
-        loc = [rand(10), rand(10)] while @characters.any?{|c| c.location == loc} || @settings.map[loc[0]][loc[1]]!= :empty
+        loc = [rand(10), rand(10)] while @characters.any?{|c| c.location == loc} || @settings.map.tile_at(*loc)!= :empty
 
         @characters << (Character.new player.name, "soldier", [], loc)
         puts "Created a character at #{loc}."

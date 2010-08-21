@@ -18,7 +18,7 @@ class ShadowMap
   end
 
   def blocked? x,y
-    return @settings.map[x][y] != :empty
+    return @settings.map.tile_at(x,y) != :empty
   end
 
   def light x,y
