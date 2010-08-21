@@ -26,7 +26,7 @@ module DCGame
   g = Game.new "Game"
   EventMachine::run do 
     EventMachine::start_server "127.0.0.1", 8801, ClientConnection, g do |client|
-      puts "Added a new client"
+      $LOGGER.info "Added a new client"
       server.add_client client
       client.send_object Message::Handshake.new
     end

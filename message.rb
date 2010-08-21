@@ -31,8 +31,7 @@ module DCGame
         @name = client.name
       end
       def ask_join_game connection
-        puts "Got player name <#{@name}>"
-        puts "Logger is #{$LOGGER.inspect}"
+        $LOGGER.info "Got player name <#{@name}>"
         connection.player.name = @name
         @info = nil
         $LOGGER.info "Their game is #{connection.game}"
@@ -84,12 +83,13 @@ module DCGame
       end
     end
 
+    # TODO this should take a c_id as the argument, rather than
+    # the loation of the character
     class DeclareCharacterToMove
       def initialize loc
         @loc = loc
       end
       def exec client
-        puts "LOLOL."
         client.current_character @loc
       end
     end
