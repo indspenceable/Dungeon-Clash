@@ -32,12 +32,29 @@ module DCGame
       attr_accessor :characters
       def initialize setup
         @characters = setup
+        @current_character = -1
       end 
       def is_character_at? x,y
         @characters.any?{|c| c.location == [x,y]}
       end
       def character_at x,y
         @characters.find{|c| c.location == [x,y]}
+      end
+
+      def set_current_character_by_c_id new_c_id
+        @current_character = new_c_id
+      end
+
+      def current_character
+        @characters.each do |c|
+          return c if c.c_id == @current_character
+        end
+        $LOGGER.warn "Trying to fetch current character, but none set."
+        nil
+      end
+
+      def player_for_current_character
+        character_for_current_move.owner
       end
     end
 
@@ -71,13 +88,10 @@ module DCGame
         @mode = :lobby
         @state = State.new []
 
-        #This stores the c_id of the current_character
-        @current_chracter = nil
         @finalized_players = PlayerFinalizationTracker.new
       end
 
       def reset_variables
-        @current_character = nil
         @state = State.new []
         @finalized_players.clear_players
       end
@@ -92,19 +106,6 @@ module DCGame
         $LOGGER.info "Player has joined."
       end
 
-      def set_current_character new_c_id
-        @current_character = new_c_id
-      end
-      def character_for_current_move
-        @state.characters.each do |c|
-          return c if c.c_id == @current_character
-        end
-        nil
-      end
-
-      def player_for_current_move
-        character_for_current_move.owner
-      end
 
     end
   end 
@@ -157,9 +158,9 @@ module DCGame
         if @finalized_players.all_players_finalized?
 
           $LOGGER.info "All Players are finalized, so the game is starting."
-          @current_character = @state.characters[rand @state.characters.length].c_id
+          @state.set_current_character_by_c_id @state.characters[rand @state.characters.length].c_id
           players.each do |p|
-            p.owner.send_object Message::StartGame.new @state, @current_character
+            p.owner.send_object Message::StartGame.new @state
           end
         else
           $LOGGER.debug "Sending out finalized_player alert."
@@ -253,7 +254,7 @@ module DCGame
             break
           end
           x,y = current_tile[0]
-          if settings.map.tile_at(x,y) == :empty 
+          if @map.tile_at(x,y) == :empty 
             unless tiles_seen.include? current_tile[0]
               tiles_seen << current_tile[0]
               rest_of_path = current_tile[1] + [[x,y]]
@@ -270,10 +271,9 @@ module DCGame
 
       #set up this game.
       #TODO this won't work because we need to give the right player name
-      def set_initial_state state, first
+      def set_initial_state state
         $LOGGER.info "Setting up the initial state of the game."
         @state = state
-        @current_move = first
         calculate_shadows @player_name
       end
 

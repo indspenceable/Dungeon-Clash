@@ -91,13 +91,11 @@ module DCGame
     end
 
     class StartGame
-      def initialize characters, first
-        @characters = characters
-        @first = first
+      def initialize state
+        @state = state
       end
       def exec client
-        client.game.set_initial_state @characters, @first
-        puts "first is #{@first}"
+        client.game.set_initial_state @state
         client.game.start
       end
     end

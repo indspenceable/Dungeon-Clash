@@ -108,13 +108,13 @@ module DCGame
               if game.state.is_character_at? x,y
                 current_character = game.state.character_at x,y
                 if current_character.owner == @name
-                  if game.character_for_current_move == current_character
+                  if game.state.current_character == current_character
                     draw_sprite 0,16, screen_location(x,y)
                   else
                     draw_sprite 1,6, screen_location(x,y)
                   end
                 else
-                  if game.character_for_current_move == current_character
+                  if game.state.current_character == current_character
                     draw_sprite 0,7, screen_location(x,y)
                   else
                     draw_sprite 1,7, screen_location(x,y)
@@ -216,7 +216,7 @@ module DCGame
             @connection.send_object Message::MoveCurrentCharacter.new @path 
           else
             # Calculate path to target
-            @path = @connection.game.calculate_path_between @connection.game.character_for_current_move.location, @cursor
+            @path = @connection.game.calculate_path_between @connection.game.state.current_character.location, @cursor
           end
         end
 
