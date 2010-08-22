@@ -39,7 +39,7 @@ module DCGame
       #sprites
       @sprite_sheet = Surface.load 'sprite.png'
       @sprite_sheet.set_colorkey [0, 255, 255]
-      @dungeon = Surface.load 'dungeon3.png'
+      @dungeon = Surface.load 'dungeon.png'
       @dungeon.set_colorkey [255,255,255]
 
       #screen

@@ -1,5 +1,5 @@
 module DCGame
-  class GameMap
+  class Board
 
     attr_reader :width
     attr_reader :height
