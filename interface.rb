@@ -155,9 +155,17 @@ module DCGame
         draw_units
         #draw_shadows
         draw_tile 0,9, [@cursor[0]-@offset[0], @cursor[1]-@offset[1]]
+        draw_path
       end
     end
 
+    def draw_path
+      if @path
+        @path.each do |l|
+          draw_sprite 3,3,screen_location(*l)
+        end
+      end
+    end
 
     def draw_sprite sx,sy,location, target=@screen
       x,y = location
@@ -200,7 +208,6 @@ module DCGame
 
     def process_event e 
       if e.is_a? Events::KeyPressed
-        #$LOGGER.info "We're processing a keypress."
         @cursor[1] += 1 if e.key == :j
         @cursor[1] -= 1 if e.key == :k
         @cursor[0] += 1 if e.key == :l
@@ -208,17 +215,15 @@ module DCGame
         if e.key == :m
           if @path
             # Send a "DO MOVE" message
-            puts "PATH IS -----------------------"
-            puts @path.inspect
-            puts "-------------------------------"
+            #puts @path.inspect
+            @connection.send_object Message::MoveCurrentCharacter.new @path 
           else
             # Calculate path to target
             @path = @connection.game.calculate_path_between @connection.game.character_for_current_move.location, @cursor
-            puts "CALCULATING PATH"
           end
         end
 
-        @connection.send_object Message::MoveCurrentCharacter.new @cursor if e.key == :k
+        #@connection.send_object Message::MoveCurrentCharacter.new @cursor if e.key == :k
 
         normalize_cursor
       end

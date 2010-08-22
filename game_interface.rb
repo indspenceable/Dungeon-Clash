@@ -88,7 +88,7 @@ module DCGame
           break
         end
         x,y = current_tile[0]
-        if settings.map[x][y] == :empty 
+        if settings.map.tile_at(x,y) == :empty 
           unless tiles_seen.include? current_tile[0]
             tiles_seen << current_tile[0]
             rest_of_path = current_tile[1] + [[x,y]]

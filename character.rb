@@ -18,12 +18,12 @@ module DCGame
 
     # Create a class. Provide the unmutable information and starting statistics for this character.
     # [owner] The name of the player that owns this character
-    # [char_class] the name of the class this character belongs to
+    # [job] the name of the class this character belongs to
     # [moves] a list of moves that this character can do.
     # [location] the x,y position of this character
-    def initialize owner, char_class, moves, location
+    def initialize owner, job, moves, location
       @owner = owner
-      @job = char_class
+      @job = job
       @moves = moves
       @location = location
       @c_id = (@@c_id += 1) 

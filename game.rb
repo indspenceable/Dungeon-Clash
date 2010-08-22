@@ -25,13 +25,15 @@ module DCGame
       map = GameMap.new 25, 25
       map.generate
       @settings = GameSettings.new map
-      
+
+      #characters and finalized players
       reset_variables
     end
 
 
     def reset_variables
       @characters = Array.new
+      @current_character = nil
       @finalized_players = Hash.new
     end
     private :reset_variables
@@ -74,9 +76,9 @@ module DCGame
 
     # When all players are finalized, this method gets called.
     def all_players_finalized
-      puts  "ALL PLAYERS ARE FINALIZED..."
-
-      msg = Message::StartGame.new @characters, @characters[rand @characters.length].c_id
+      $LOGGER.info "All Players are finalized, so the game is starting."
+      @current_character = @characters[rand @characters.length].c_id
+      msg = Message::StartGame.new @characters, @current_character
       players.each do |p|
         p.owner.send_object msg
       end
@@ -121,6 +123,23 @@ module DCGame
     def full?
       $LOGGER.info "So far, #{players.length} players are in the game."
       players.length==2
+    end
+
+    # is a location occupied?
+    def occupied? x,y
+      map.tile_at(x,y) != :empty 
+    end
+
+    def move_current_character_on_path path
+      moved_path
+      prev = 
+        path.each do |l|
+        if occupied? *l
+
+        else
+          prev = l
+        end
+        end
     end
   end
 end

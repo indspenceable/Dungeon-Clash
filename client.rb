@@ -32,7 +32,7 @@ module DCGame
       controller = graphics
 
       recent_times = [] 
-      EventMachine::PeriodicTimer.new 30/1000.0 do 
+      EventMachine::PeriodicTimer.new 1.0/60.0 do 
         #recent_times << Time.now
         #if recent_times.size == 20
         #  avg = Array.new

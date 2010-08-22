@@ -12,13 +12,6 @@ module DCGame
         otherside.send_object self if (@state += 1) < @states.length
       end
     end
-
-    class Query < Dialog
-      def initialize
-        super [:respond, :accept]
-      end
-    end
-
     ###################################
     #           Dialogs               #
     ###################################
@@ -54,11 +47,33 @@ module DCGame
     #           Outliers              #
     ###################################
 
+    class Message
+      def initialize action, args
+        @action = action
+        @args = args
+      end
+      def exec target
+        target.send(@action, args) 
+      end
+    end
+    class Game
+      def initialize action, args
+        @action = action
+        @args = args
+      end
+      def exec target
+        target.game.send(@action, args) 
+      end
+    end
+
+    # IDEALLY, we can get by with just these two.
+
     class MoveCurrentCharacter
-      def initialize to_location
-        
+      def initialize path
+       @path = path 
       end
       def exec connection
+        connection.game.move_current_character_on_path @path
       end
     end
 
