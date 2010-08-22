@@ -102,7 +102,7 @@ module DCGame
       game.map.width.times do |x|
         game.map.height.times do |y|
           if on_screen? x,y
-            unless game.shadows.lit? x,y && false
+            unless game.shadows.lit?(x,y)
               draw_tile 5,9, screen_location(x,y)
             else
               if game.state.is_character_at? x,y

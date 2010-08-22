@@ -137,7 +137,7 @@ module DCGame
         @pname = playername
       end
       def exec client
-        client.game.finalize_player @pname
+        client.game.set_player_finalized @pname
       end
     end
     class ChooseCharacters

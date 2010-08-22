@@ -58,6 +58,8 @@ module DCGame
       #Hey, interaces need to see what players are finalized
       attr_accessor :finalized_players
 
+      attr_accessor :state
+
       # Games should all have these variables set.
       def initialize name, map
         #set meta data
@@ -94,7 +96,7 @@ module DCGame
         @current_character = new_c_id
       end
       def character_for_current_move
-        @state.chars.each do |c|
+        @state.characters.each do |c|
           return c if c.c_id == @current_character
         end
         nil
@@ -204,6 +206,7 @@ module DCGame
       def initialize name, pname, players, map
         super(name, map)
         $LOGGER.info "Constructing a game_interface."
+        @player_name = pname
         @shadows = ShadowMap.new @map
       end
 
@@ -271,7 +274,7 @@ module DCGame
         $LOGGER.info "Setting up the initial state of the game."
         @state = state
         @current_move = first
-        calculate_shadows "LOL"
+        calculate_shadows @player_name
       end
 
       #set up the shadow map. This needs to be called every time the board changes.
