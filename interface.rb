@@ -51,7 +51,7 @@ module DCGame
 
     def draw target
       @screen.fill [255, 255, 255]
-      if target.is_a? GameInterface
+      if target.is_a? Client::Game
         draw_game @connection.game
       end
       @screen.update
@@ -59,12 +59,9 @@ module DCGame
 
     def draw_map
       game = @connection.game
-      #game.settings.map.each_index do |x|
-      #  game.settings.map[x].each_index do |y|
       TILES_WIDE.times do |x|
         TILES_HIGH.times do |y|
-          #if game.settings.map[@offset[0]+x][@offset[1]+y] != :empty
-          if game.settings.map.tile_at(@offset[0]+x,@offset[1]+y) != :empty
+          if game.map.tile_at(@offset[0]+x,@offset[1]+y) != :empty
             draw_tile 0,0, [x,y]
           else
             draw_tile 12,0, [x,y]
@@ -75,9 +72,9 @@ module DCGame
       unless @cached_map
         game = @connection.game
         @prerendered_map = Surface.new [TILE_WIDTH * TILES_WIDE, TILE_HEIGHT * TILES_HIGH]
-        game.settings.map.each_index do |x|
-          game.settings.map[x].each_index do |y|
-            if game.settings.map[x][y] != :empty
+        game.map.width.times do |x|
+          game.map.height.times do |y|
+            if game.map.tile_at(x,y) != :empty
               draw_tile 0,0, [x, y], @prerendered_map
             else
               draw_tile 12,0, [x, y], @prerendered_map
@@ -102,10 +99,10 @@ module DCGame
       game = @connection.game
       #game.state.chars.each_pair do |key, val| 
 
-      game.settings.map.width.times do |x|
-        game.settings.map.height.times do |y|
+      game.map.width.times do |x|
+        game.map.height.times do |y|
           if on_screen? x,y
-            unless game.shadows.lit? x,y
+            unless game.shadows.lit? x,y && false
               draw_tile 5,9, screen_location(x,y)
             else
               if game.state.is_character_at? x,y
@@ -140,7 +137,7 @@ module DCGame
         @text.render("Select your characters.", true, [0,0,0]).blit @screen, [0,0]
         offset = 40
         game.players.each do |p|
-          @text.render(p + "is finalized: #{game.finalized_player p}", true, [0,0,0]).blit @screen, [0, offset]
+          @text.render(p + "is finalized: #{game.finalized_players.player_finalized? p}", true, [0,0,0]).blit @screen, [0, offset]
           offset+=30
         end
       when :lobby
@@ -196,8 +193,8 @@ module DCGame
       @cursor.each_index do |i|
         @cursor[i] = 0 if @cursor[i] < 0
       end
-      @cursor[0] -= 1 while @cursor[0] >= @connection.game.settings.map.width
-      @cursor[1] -= 1 while @cursor[1] >= @connection.game.settings.map.height
+      @cursor[0] -= 1 while @cursor[0] >= @connection.game.map.width
+      @cursor[1] -= 1 while @cursor[1] >= @connection.game.map.height
 
 
       @offset[0] -= 1 while @cursor[0] < @offset[0]

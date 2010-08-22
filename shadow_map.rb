@@ -2,23 +2,23 @@ require 'permissive_field_of_view'
 
 class ShadowMap
   include PermissiveFieldOfView
-  def initialize settings
-    @settings = settings
-    @width = settings.map.width
-    @height = settings.map.height
+  def initialize map
+    @map = map
+    @width = map.width
+    @height = map.height
     reset_shadows
   end
 
   def reset_shadows
-    @light_map = Array.new(@settings.map.width) do |x|
-      Array.new(@settings.map.height) do |y|
+    @light_map = Array.new(@map.width) do |x|
+      Array.new(@map.height) do |y|
         false
       end
     end
   end
 
   def blocked? x,y
-    return @settings.map.tile_at(x,y) != :empty
+    return @map.tile_at(x,y) != :empty
   end
 
   def light x,y

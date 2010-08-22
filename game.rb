@@ -1,4 +1,6 @@
 require 'board'
+require 'shadow_map'
+require 'character'
 
 module DCGame
   module Games
@@ -18,7 +20,7 @@ module DCGame
         @finalization_states[player_name]
       end
       def all_players_finalized?
-        @finalization_states.values.include? false
+        !@finalization_states.values.include? false
       end
     end
 
@@ -74,8 +76,8 @@ module DCGame
 
       def reset_variables
         @current_character = nil
-        @state = State.new
-        @finalized_players.clear
+        @state = State.new []
+        @finalized_players.clear_players
       end
 
       # is the game full? if so, its probably going to jump to Game.begin_character_selection
@@ -133,27 +135,29 @@ module DCGame
         players.each do |p|
           @finalized_players.set_player_finalized p.name, false
           #p.owner.send_object Message::SelectCharacters.new players.reject{ |pl| p==pl}.collect{ |pl| pl.name}
-          p.owner.send Message::Game.new(:select_charactesr, players.reject{ |pl| p==pl}.collect{ |pl| pl.name})
+          p.owner.send_object Message::Game.new(:begin_character_selection, players.reject{ |pl| p==pl}.collect{ |pl| pl.name})
         end
       end
 
       # Tell the game that this player is finished choosing their character.
       def set_player_finalized player
+
         @finalized_players.set_player_finalized player.name, true
 
         #generate random characters.
         5.times do
           loc = [rand(10), rand(10)]
           loc = [rand(10), rand(10)] while @state.characters.any?{|c| c.location == loc} || @map.tile_at(*loc)!= :empty
-          @characters << (Character.new player.name, "soldier", [], loc)
+          @state.characters << (Character.new player.name, "soldier", [], loc)
           puts "Created a character at #{loc}."
         end
 
         if @finalized_players.all_players_finalized?
+
           $LOGGER.info "All Players are finalized, so the game is starting."
-          @current_character = @characters[rand @characters.length].c_id
+          @current_character = @state.characters[rand @state.characters.length].c_id
           players.each do |p|
-            p.owner.send_object Message::StartGame.new @characters, @current_character
+            p.owner.send_object Message::StartGame.new @state, @current_character
           end
         else
           $LOGGER.debug "Sending out finalized_player alert."
@@ -193,17 +197,18 @@ module DCGame
   end
 
   module Client
-    class Game
-      #REFACTORED
+    class Game < Games::Base
+
+      attr_reader :shadows
+
       def initialize name, pname, players, map
         super(name, map)
         $LOGGER.info "Constructing a game_interface."
-        @shadows = ShadowMap.new @settings
+        @shadows = ShadowMap.new @map
       end
 
       # This makes the game being character selection mode. 
-      # REFACTORED
-      def begin_character_selection_mode player_list
+      def begin_character_selection player_list
         @players = player_list
         $LOGGER.debug "Game is moving into character selection phase. Other players are #{@players.inspect}"
         @mode = :select_characters
@@ -211,7 +216,7 @@ module DCGame
 
         #this is the part where you choose players
         @players.each do |p|
-          @finalized_players.set_player_finalized p, true
+          @finalized_players.set_player_finalized p, false
         end
       end
 
@@ -262,9 +267,9 @@ module DCGame
 
       #set up this game.
       #TODO this won't work because we need to give the right player name
-      def set_initial_state characters, first
+      def set_initial_state state, first
         $LOGGER.info "Setting up the initial state of the game."
-        @state = State.new characters
+        @state = state
         @current_move = first
         calculate_shadows "LOL"
       end
@@ -272,7 +277,7 @@ module DCGame
       #set up the shadow map. This needs to be called every time the board changes.
       def calculate_shadows player_name
         @shadows.reset_shadows
-        @state.chars.each do |character|
+        @state.characters.each do |character|
           if character.owner == player_name
             @shadows.do_fov *(character.location+[5])
           end

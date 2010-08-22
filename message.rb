@@ -28,9 +28,13 @@ module DCGame
         connection.player.name = @name
         @info = nil
         $LOGGER.info "Their game is #{connection.game}"
+        # It will only set the connection's game if there is room to join it.
         if connection.game
-          $LOGGER.info "They have a game."
-          @info = [connection.game.name, connection.game.players.collect{|p| p.name}, connection.game.settings]
+          $LOGGER.info "Connection has joined game."
+          #TODO - PlayerIndex so that playes are just stored in the game as names anyway
+          @info = [connection.game.name, connection.game.players.collect{|p| p.name}, connection.game.map]
+        else
+          $LOGGER.debug "New connection was rejected from game."
         end
       end
       def accept client
@@ -53,7 +57,7 @@ module DCGame
         @args = args
       end
       def exec target
-        target.send(@action, args) 
+        target.send(@action, @args) 
       end
     end
     class Game
@@ -62,7 +66,7 @@ module DCGame
         @args = args
       end
       def exec target
-        target.game.send(@action, args) 
+        target.game.send(@action, @args) 
       end
     end
 
@@ -70,7 +74,7 @@ module DCGame
 
     class MoveCurrentCharacter
       def initialize path
-       @path = path 
+        @path = path 
       end
       def exec connection
         connection.game.move_current_character_on_path @path
@@ -143,7 +147,7 @@ module DCGame
       def exec connection
         #TODO
         #confirm that characters are valid?
-        connection.game.finalize_player connection.player if !connection.game.nil? && connection.game.started?
+        connection.game.set_player_finalized connection.player
       end
     end
   end

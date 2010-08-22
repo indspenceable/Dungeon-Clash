@@ -1,7 +1,7 @@
 require 'rubygems'
 require 'eventmachine'
 
-require 'game_interface'
+require 'game'
 require 'interface'
 
 module DCGame
@@ -31,7 +31,7 @@ module DCGame
 
     def set_game game_name, players, settings
       $LOGGER.info "Setting the game."
-      @game = GameInterface.new game_name, @name, players, settings
+      @game = Client::Game.new game_name, @name, players, settings
       $LOGGER.info "Done setting the game."
     end
   end
