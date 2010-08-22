@@ -23,7 +23,7 @@ module DCGame
   end
   #run the server.
   server = ServerManager.new
-  g = Game.new "Game"
+  g = Server::Game.new "Game"
   EventMachine::run do 
     EventMachine::start_server "127.0.0.1", 8801, ClientConnection, g do |client|
       $LOGGER.info "Added a new client"

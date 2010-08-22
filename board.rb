@@ -31,6 +31,5 @@ module DCGame
     def player_capacity
       2
     end
-
   end
 end
