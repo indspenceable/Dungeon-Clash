@@ -10,10 +10,14 @@ module DCGame
     # A list of this units moves
     attr_reader :moves
     # This units location
-    attr_reader :location
+    attr_accessor :location
     # A unique id number for this unit, shared by the server
     # and all the clients.
     attr_reader :c_id
+
+    # These keep track of turn order.
+    attr_accessor :fatigue, :tie_fatigue
+
     @@c_id = 0
 
     # Create a class. Provide the unmutable information and starting statistics for this character.

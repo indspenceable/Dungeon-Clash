@@ -54,7 +54,29 @@ module DCGame
       end
 
       def player_for_current_character
-        character_for_current_move.owner
+        current_character.owner
+      end
+
+      def choose_next_character_to_move 
+        #@characters.sort do |a, b| 
+        #  if a.fatigue == b.fatigue 
+        #    break a.tie_fatigue <=> b.tie_fatigue
+        #  end
+        #  a.fatigue <=> b.fatigue
+        #end
+        @characters.each{ |c| c.fatigue -= 1 } until @characters.any? { |c| c.fatigue == 0 } 
+        chars_with_zero_fatigue = @characters.find_all{ |c| c.fatigue == 0 }
+        chars_with_zero_fatigue.each{ |c| c.tie_fatigue -= 1 } until chars_with_zero_fatigue.any? { |c| c.tie_fatigue == 0 }
+        @characters.find{ |c| (c.fatigue == 0) && (c.tie_fatigue == 0) }
+      end
+
+      def increase_fatigue character, amt
+        character.fatigue += amt
+        character.tie_fatigue = 0
+        character.tie_fatigue += 1 while @characters.any? do |c| 
+          c.fatigue == character.fatigue && c.tie_fatigue > character.tie_fatigue
+        end
+        puts "Character's fatigue is set to be: #{character.fatigue} fatigue (#{character.tie_fatigue})"
       end
     end
 
@@ -106,6 +128,11 @@ module DCGame
         $LOGGER.info "Player has joined."
       end
 
+      def passable? loc, player_name=nil
+        return false if @map.tile_at(*loc) != :empty
+        return @state.character_at(*loc).owner == player_name if @state.is_character_at? *loc 
+        true
+      end
 
     end
   end 
@@ -149,16 +176,22 @@ module DCGame
 
         #generate random characters.
         5.times do
-          loc = [rand(10), rand(10)]
-          loc = [rand(10), rand(10)] while @state.characters.any?{|c| c.location == loc} || @map.tile_at(*loc)!= :empty
+          loc = [rand(@map.width), rand(@map.height)]
+          loc = [rand(@map.width), rand(@map.height)] until passable? loc
           @state.characters << (Character.new player.name, "soldier", [], loc)
-          puts "Created a character at #{loc}."
         end
 
         if @finalized_players.all_players_finalized?
 
           $LOGGER.info "All Players are finalized, so the game is starting."
-          @state.set_current_character_by_c_id @state.characters[rand @state.characters.length].c_id
+          #@state.set_current_character_by_c_id @state.characters[rand @state.characters.length].c_id
+          @state.characters.size.downto(1) { |n| @state.characters.push @state.characters.delete_at(rand(n)) }
+          @state.characters.size.times do |n|
+            @state.characters[n].fatigue = 0
+            @state.characters[n].tie_fatigue = n
+          end
+          @state.choose_next_character_to_move 
+
           players.each do |p|
             p.owner.send_object Message::StartGame.new @state
           end
@@ -189,13 +222,51 @@ module DCGame
       end
 
       # is a location occupied?
-      def passable? x,y
-        map.tile_at(x,y) != :empty 
+      #def passable? x,y
+      #   map.tile_at(x,y) != :empty 
+      #end
+
+      def move_current_character_on_path path
+        $LOGGER.info "Moving on path right now."
+        current_character_location = @state.current_character.location
+        actual_move_path = []
+        success = true
+        path.each do |l|
+          if passable? l, @state.player_for_current_character
+            puts "Checked #{l.inspect}"
+            current_character_location = l
+            actual_move_path << l
+          else
+            puts "Failed on #{l}"
+            success = false 
+
+            break
+          end
+        end
+
+        #we need to increase this character's fatigue
+        #TODO Design question - Should you be penalized for the ammount you try to move?
+        # or the ammount you move?
+        @state.increase_fatigue (@state.current_character,
+                                 actual_move_path.size*cost_per_move(current_character))
+
+        if success
+          # TELL THE CURRENT PLAYER THAT THEY MAY DO A NON-MOVE ACTION
+          msg = Message::Game.new(:move_unit, [actual_move_path, @state.current_character.c_id])
+        else
+          # BUMP!!!
+          # so we ne
+          # So, we need to pick a new character to move
+          @state.choose_next_character_to_move
+          msg = Message::Game.new(:move_unit, [actual_move_path, @state.current_character.c_id])
+        end
+
+        @players.each do |p|
+          p.owner.send_object msg
+        end
       end
 
-      #TODO unimplemented
-      def move_current_character_on_path path
-      end
+      def cost_per_move character; 1 end
     end
   end
 
@@ -239,6 +310,7 @@ module DCGame
 
       # A* Pathfinding
       def calculate_path_between start, dest
+        $LOGGER.info "Finding a path between #{start.inspect} and #{dest.inspect}"
         tiles_seen = Array.new 
         tiles_to_check = Array.new << [start, []]
         #format of tiles_to check:

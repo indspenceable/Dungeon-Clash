@@ -196,7 +196,6 @@ module DCGame
       @cursor[0] -= 1 while @cursor[0] >= @connection.game.map.width
       @cursor[1] -= 1 while @cursor[1] >= @connection.game.map.height
 
-
       @offset[0] -= 1 while @cursor[0] < @offset[0]
       @offset[1] -= 1 while @cursor[1] < @offset[1]
       @offset[0] += 1 while @cursor[0] >= (@offset[0] + TILES_WIDE)
@@ -213,7 +212,9 @@ module DCGame
           if @path
             # Send a "DO MOVE" message
             #puts @path.inspect
-            @connection.send_object Message::MoveCurrentCharacter.new @path 
+            #@connection.send_object Message::MoveCurrentCharacter.new @path 
+            @connection.send_object Message::Game.new(:move_current_character_on_path, @path)
+            @path = nil
           else
             # Calculate path to target
             @path = @connection.game.calculate_path_between @connection.game.state.current_character.location, @cursor

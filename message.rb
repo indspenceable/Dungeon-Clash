@@ -72,15 +72,6 @@ module DCGame
 
     # IDEALLY, we can get by with just these two.
 
-    class MoveCurrentCharacter
-      def initialize path
-        @path = path 
-      end
-      def exec connection
-        connection.game.move_current_character_on_path @path
-      end
-    end
-
     class SelectCharacters
       def initialize plnames
         @names = plnames
