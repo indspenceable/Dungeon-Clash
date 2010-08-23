@@ -23,7 +23,15 @@ module DCGame
 
     # setup
     def initialize g
-      @game = g
+      @g = g
+    end
+
+    def try_join_game name
+      @game = nil
+      return $LOGGER.warn "Trying to join a full game. Rejecting." if @g.full?
+      return $LOGGER.warn "Duplicate name, rejecting." if @g.players.any?{ |p| p.name == name}
+      return $LOGGER.warn "Trying to join with no name." if "#{name}"==""
+      @game = @g
     end
 
     # On create, make a player for this connection.

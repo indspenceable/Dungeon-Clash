@@ -1,5 +1,6 @@
 require 'rubygems'
 require 'rubygame'
+require 'state_change'
 
 include Rubygame
 
@@ -9,6 +10,8 @@ module DCGame
       @connection = connect
       initialize_output
       initialize_input
+
+      @animation = nil
     end
 
 
@@ -50,26 +53,41 @@ module DCGame
     end
 
     def draw target
+      #if we need a state_change, ask for one
+      @state_change = @connection.game.get_next_state_change unless @state_change
+      #assuming we have one, if its finished activate it and ask for another
+      while @state_change && @state_change.finished? 
+        @state_change.activate @connection.game.state 
+        @state_change = @connection.game.get_next_state_change
+      end
+      #if at this point we have one, then step.
+      @state_change.step if @state_change
+
       @screen.fill [255, 255, 255]
       if target.is_a? Client::Game
-        draw_game @connection.game
+        draw_game
       end
+      #if @animation
+      #  @animation.step
+      #  @animation = nil if @animation.finished?
+      #end
       @screen.update
     end
 
     def draw_map
-      game = @connection.game
-      TILES_WIDE.times do |x|
-        TILES_HIGH.times do |y|
-          if game.map.tile_at(@offset[0]+x,@offset[1]+y) != :empty
-            draw_tile 0,0, [x,y]
-          else
-            draw_tile 12,0, [x,y]
-          end
-        end
-      end
-      return
-      unless @cached_map
+      #game = @connection.game
+      #TILES_WIDE.times do |x|
+      #  TILES_HIGH.times do |y|
+      #    if game.map.tile_at(@offset[0]+x,@offset[1]+y) != :empty
+      #      draw_tile 0,0, [x,y]
+      #    else
+      #      draw_tile 12,0, [x,y]
+      #    end
+      #  end
+      #end
+      #return
+      unless @prerendered_map
+        puts "MAKING MAP"
         game = @connection.game
         @prerendered_map = Surface.new [TILE_WIDTH * TILES_WIDE, TILE_HEIGHT * TILES_HIGH]
         game.map.width.times do |x|
@@ -92,34 +110,47 @@ module DCGame
 
     #transforms a map location to screen location
     def screen_location x,y
-     [x-@offset[0],y-@offset[1]] 
+      [x-@offset[0],y-@offset[1]] 
     end
 
+    def get_sprite_for_character character
+      if @connection.game.state.current_character == character
+        if character.owner == @name
+          [0,7]
+        else
+          #their selected guy
+          [1,7]
+        end
+      else
+        if character.owner == @name
+          [5,6]
+        else
+          #their guys
+          [6,6]
+        end
+      end
+    end
+
+    #TODO rename to draw_characters
     def draw_units
       game = @connection.game
       #game.state.chars.each_pair do |key, val| 
-
       game.map.width.times do |x|
         game.map.height.times do |y|
           if on_screen? x,y
-            unless game.shadows.lit?(x,y)
+            if !game.shadows.lit?(x,y) && false
               draw_tile 5,9, screen_location(x,y)
             else
-              if game.state.is_character_at? x,y
+
+              if game.state.is_character_at?(x,y) && @state_change && @state_change.is_a?(StateChange::Movement) && game.state.character_at(x,y) == @state_change.unit
                 current_character = game.state.character_at x,y
-                if current_character.owner == @name
-                  if game.state.current_character == current_character
-                    draw_sprite 0,16, screen_location(x,y)
-                  else
-                    draw_sprite 1,6, screen_location(x,y)
-                  end
-                else
-                  if game.state.current_character == current_character
-                    draw_sprite 0,7, screen_location(x,y)
-                  else
-                    draw_sprite 1,7, screen_location(x,y)
-                  end
-                end
+                cx,cy = get_sprite_for_character current_character 
+                puts "Current location is: #{@state_change.current_location.inspect}"
+                draw_sprite cx,cy,screen_location(*@state_change.current_location)
+              elsif game.state.is_character_at? x,y
+                current_character = game.state.character_at x,y
+                cx,cy = get_sprite_for_character current_character 
+                draw_sprite cx,cy,screen_location(x,y)
               end
             end
           end
@@ -127,7 +158,7 @@ module DCGame
       end
     end
 
-    def draw_game game
+    def draw_game
       @screen.fill [0,0,0]
       draw_map
 
@@ -136,14 +167,14 @@ module DCGame
       when :select_characters
         @text.render("Select your characters.", true, [0,0,0]).blit @screen, [0,0]
         offset = 40
-        game.players.each do |p|
-          @text.render(p + "is finalized: #{game.finalized_players.player_finalized? p}", true, [0,0,0]).blit @screen, [0, offset]
+        @connection.game.players.each do |p|
+          @text.render(p.inspect + "is finalized: #{@connection.game.finalized_players.player_finalized? p}", true, [0,0,0]).blit @screen, [0, offset]
           offset+=30
         end
       when :lobby
         @text.render("Waiting for more players.", true, [0,0,0]).blit @screen, [0,0]
         offset = 40
-        game.players.each do |p|
+        @connection.game.players.each do |p|
           @text.render(p , true, [0,0,0]).blit @screen, [0, offset]
           offset+=30
         end
@@ -164,21 +195,20 @@ module DCGame
       end
     end
 
-    def draw_sprite sx,sy,location, target=@screen
+    def draw_from_sprite_sheet sx, sy, location, target, ss
       x,y = location
       rtn  = Surface.new [SPRITE_WIDTH, SPRITE_HEIGHT]
-      @sprite_sheet.blit rtn, [0,0], [sx*SPRITE_WIDTH, sy*SPRITE_HEIGHT, SPRITE_WIDTH, SPRITE_HEIGHT]
+      ss.blit rtn, [0,0], [sx*SPRITE_WIDTH, sy*SPRITE_HEIGHT, SPRITE_WIDTH, SPRITE_HEIGHT]
       rtn = rtn.zoom SPRITE_STRETCH, false
-      rtn.set_colorkey @sprite_sheet.colorkey
+      rtn.set_colorkey ss.colorkey
       rtn.blit target, [TILE_WIDTH*x,TILE_HEIGHT*y]
     end
+
+    def draw_sprite sx,sy,location, target=@screen
+      draw_from_sprite_sheet sx,sy,location,target,@sprite_sheet
+    end
     def draw_tile sx,sy,location, target=@screen
-      x,y = location
-      rtn  = Surface.new [SPRITE_WIDTH, SPRITE_HEIGHT]
-      @dungeon.blit rtn, [0,0], [sx*SPRITE_WIDTH, sy*SPRITE_HEIGHT, SPRITE_WIDTH, SPRITE_HEIGHT]
-      rtn = rtn.zoom SPRITE_STRETCH, false
-      rtn.set_colorkey @dungeon.colorkey
-      rtn.blit target, [TILE_WIDTH*x,TILE_HEIGHT*y]
+      draw_from_sprite_sheet sx,sy,location,target,@dungeon
     end
 
     #-------------------------------

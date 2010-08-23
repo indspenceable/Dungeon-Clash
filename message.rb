@@ -24,10 +24,10 @@ module DCGame
         @name = client.name
       end
       def ask_join_game connection
-        $LOGGER.info "Got player name <#{@name}>"
+        $LOGGER.info "Got player named: <#{@name}>"
         connection.player.name = @name
+        connection.try_join_game @name
         @info = nil
-        $LOGGER.info "Their game is #{connection.game}"
         # It will only set the connection's game if there is room to join it.
         if connection.game
           $LOGGER.info "Connection has joined game."

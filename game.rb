@@ -49,7 +49,7 @@ module DCGame
         @characters.each do |c|
           return c if c.c_id == @current_character
         end
-        $LOGGER.warn "Trying to fetch current character, but none set."
+        $LOGGER.warn "Trying to fetch current character, but #{@current_character} set."
         nil
       end
 
@@ -67,7 +67,7 @@ module DCGame
         @characters.each{ |c| c.fatigue -= 1 } until @characters.any? { |c| c.fatigue == 0 } 
         chars_with_zero_fatigue = @characters.find_all{ |c| c.fatigue == 0 }
         chars_with_zero_fatigue.each{ |c| c.tie_fatigue -= 1 } until chars_with_zero_fatigue.any? { |c| c.tie_fatigue == 0 }
-        @characters.find{ |c| (c.fatigue == 0) && (c.tie_fatigue == 0) }
+        @current_character = @characters.find{ |c| (c.fatigue == 0) && (c.tie_fatigue == 0) }.c_id
       end
 
       def increase_fatigue character, amt
@@ -140,7 +140,7 @@ module DCGame
     class Game < Games::Base
 
       def initialize name
-        super(name, Board.new(25,25))
+        super(name, Board.new(10,10))
       end
 
       # Inform the game that a player has joined.
@@ -151,7 +151,7 @@ module DCGame
           begin_character_selection
         else 
           $LOGGER.info "Informing those connected that #{player} has joined."
-          players.reject{|p| p==player}.each do |p|
+          @players.reject{|p| p==player}.each do |p|
             p.owner.send_object Message::Message.new(:add_player, connection.player.name)
           end
         end
@@ -190,6 +190,7 @@ module DCGame
             @state.characters[n].fatigue = 0
             @state.characters[n].tie_fatigue = n
           end
+
           @state.choose_next_character_to_move 
 
           players.each do |p|
@@ -229,26 +230,33 @@ module DCGame
       def move_current_character_on_path path
         $LOGGER.info "Moving on path right now."
         current_character_location = @state.current_character.location
-        actual_move_path = []
+        $LOGGER.warn "Current character is at #{@state.current_character.location.inspect} while the path is starting at #{path.first.inspect}..."
+        last_passable_space = @state.current_character.location
         success = true
         path.each do |l|
           if passable? l, @state.player_for_current_character
-            puts "Checked #{l.inspect}"
             current_character_location = l
-            actual_move_path << l
+            #actual_move_path << l
+            last_passable_space = l if passable?(l)
           else
-            puts "Failed on #{l}"
             success = false 
-
             break
+          end
+        end
+        actual_move_path = []
+        x = false
+        path.each do |l|
+          unless x
+            actual_move_path << l
+            x = (l==last_passable_space)
           end
         end
 
         #we need to increase this character's fatigue
         #TODO Design question - Should you be penalized for the ammount you try to move?
         # or the ammount you move?
-        @state.increase_fatigue (@state.current_character,
-                                 actual_move_path.size*cost_per_move(current_character))
+        @state.increase_fatigue(@state.current_character,
+                                 actual_move_path.size*cost_per_move(@state.current_character))
 
         if success
           # TELL THE CURRENT PLAYER THAT THEY MAY DO A NON-MOVE ACTION
@@ -264,6 +272,7 @@ module DCGame
         @players.each do |p|
           p.owner.send_object msg
         end
+        @state.current_character.location = actual_move_path.last
       end
 
       def cost_per_move character; 1 end
@@ -280,6 +289,8 @@ module DCGame
         $LOGGER.info "Constructing a game_interface."
         @player_name = pname
         @shadows = ShadowMap.new @map
+
+        @state_change_queue = Array.new
       end
 
       # This makes the game being character selection mode. 
@@ -362,6 +373,26 @@ module DCGame
       def start
         $LOGGER.debug "Game is starting."
         @mode = :in_progress
+      end
+
+      def enqueue_state_change sc
+        @state_change_queue << sc
+      end
+      def get_next_state_change
+        return nil if @state_change_queue.length == 0
+        @state_change_queue.delete_at(0)
+      end
+
+      #TODO rename this to move_character
+      def move_unit args
+        puts "MOVING."
+        path, new_current_character = *args
+        #puts "#{path.inspect} is path"
+        enqueue_state_change StateChange::Movement.new(path, @state.current_character)
+        if @state.current_character.c_id != new_current_character
+          enqueue_state_change StateChange::ChangeCurrentCharacter.new(new_current_character)
+        else
+        end
       end
     end
   end
