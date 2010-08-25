@@ -140,7 +140,7 @@ module DCGame
     class Game < Games::Base
 
       def initialize name
-        super(name, Board.new(10,10))
+        super(name, Board.new(25,25))
       end
 
       # Inform the game that a player has joined.
