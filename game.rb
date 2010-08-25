@@ -40,11 +40,9 @@ module DCGame
       def character_at x,y
         @characters.find{|c| c.location == [x,y]}
       end
-
       def set_current_character_by_c_id new_c_id
         @current_character = new_c_id
       end
-
       def current_character
         @characters.each do |c|
           return c if c.c_id == @current_character
@@ -113,6 +111,7 @@ module DCGame
         @finalized_players = PlayerFinalizationTracker.new
       end
 
+
       def reset_variables
         @state = State.new []
         @finalized_players.clear_players
@@ -138,9 +137,8 @@ module DCGame
   end 
   module Server
     class Game < Games::Base
-
       def initialize name
-        super(name, Board.new(25,25))
+        super(name, Board.new(10,10))
       end
 
       # Inform the game that a player has joined.
@@ -258,6 +256,7 @@ module DCGame
         @state.increase_fatigue(@state.current_character,
                                  actual_move_path.size*cost_per_move(@state.current_character))
 
+        @state.current_character.location = actual_move_path.last
         if success
           # TELL THE CURRENT PLAYER THAT THEY MAY DO A NON-MOVE ACTION
           msg = Message::Game.new(:move_unit, [actual_move_path, @state.current_character.c_id])
@@ -272,7 +271,6 @@ module DCGame
         @players.each do |p|
           p.owner.send_object msg
         end
-        @state.current_character.location = actual_move_path.last
       end
 
       def cost_per_move character; 1 end
@@ -324,11 +322,15 @@ module DCGame
         $LOGGER.info "Finding a path between #{start.inspect} and #{dest.inspect}"
         tiles_seen = Array.new 
         tiles_to_check = Array.new << [start, []]
+
+        #TODO check dest.
+
         #format of tiles_to check:
         # [[x,y],[[a,b],[c,d]...]]
         # a,b   c,d are all older
         # tiles
         path = nil
+        return path unless would_path_through?(*dest)
         while tiles_to_check.length > 0 do
           tiles_to_check.sort { |f,s| f[1].size <=> s[1].size }
           current_tile = tiles_to_check.delete_at(0)
@@ -337,11 +339,11 @@ module DCGame
             break
           end
           x,y = current_tile[0]
-          if @map.tile_at(x,y) == :empty 
+          if would_path_through?(x,y)
             unless tiles_seen.include? current_tile[0]
               tiles_seen << current_tile[0]
               rest_of_path = current_tile[1] + [[x,y]]
-              #puts "Rest of path is #{rest_of_path.inspect}"
+
               tiles_to_check << [[x+1,y],rest_of_path]
               tiles_to_check << [[x-1,y],rest_of_path]
               tiles_to_check << [[x,y+1],rest_of_path]
@@ -350,6 +352,16 @@ module DCGame
           end
         end
         return path
+      end
+
+      def would_path_through?(x,y)
+        return false if @map.tile_at(x,y) != :empty
+        if @shadows.lit?(x,y)
+          if @state.is_character_at?(x,y)
+            return false if @state.character_at(x,y).owner != @player_name
+          end
+        end
+        true
       end
 
       #set up this game.
@@ -385,7 +397,6 @@ module DCGame
 
       #TODO rename this to move_character
       def move_unit args
-        puts "MOVING."
         path, new_current_character = *args
         #puts "#{path.inspect} is path"
         enqueue_state_change StateChange::Movement.new(path, @state.current_character)

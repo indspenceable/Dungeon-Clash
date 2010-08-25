@@ -12,6 +12,7 @@ module DCGame
       initialize_input
 
       @animation = nil
+            
     end
 
 
@@ -22,7 +23,7 @@ module DCGame
     SPRITE_HEIGHT = 8
     SPRITE_WIDTH = 8
 
-    SPRITE_STRETCH = 8
+    SPRITE_STRETCH = 5
 
     TILE_WIDTH = SPRITE_WIDTH*SPRITE_STRETCH
     TILE_HEIGHT = SPRITE_HEIGHT*SPRITE_STRETCH
@@ -44,6 +45,7 @@ module DCGame
       @sprite_sheet.set_colorkey [0, 255, 255]
       @dungeon = Surface.load 'dungeon.png'
       @dungeon.set_colorkey [255,255,255]
+      @sprite_cache = Hash.new
 
       #screen
       @screen = Screen.new [TILE_WIDTH * TILES_WIDE, TILE_HEIGHT * TILES_HIGH]
@@ -57,7 +59,8 @@ module DCGame
       @state_change = @connection.game.get_next_state_change unless @state_change
       #assuming we have one, if its finished activate it and ask for another
       while @state_change && @state_change.finished? 
-        @state_change.activate @connection.game.state 
+        @state_change.activate @connection.game.state
+        @connection.game.calculate_shadows @name
         @state_change = @connection.game.get_next_state_change
       end
       #if at this point we have one, then step.
@@ -87,7 +90,6 @@ module DCGame
       #end
       #return
       unless @prerendered_map
-        puts "MAKING MAP"
         game = @connection.game
         @prerendered_map = Surface.new [TILE_WIDTH * game.map.width, TILE_HEIGHT * game.map.height]
         game.map.width.times do |x|
@@ -141,13 +143,8 @@ module DCGame
             if !game.shadows.lit?(x,y)
               draw_tile 5,9, screen_location(x,y)
             else
-
-              if game.state.is_character_at?(x,y) && @state_change && @state_change.is_a?(StateChange::Movement) && game.state.character_at(x,y) == @state_change.unit
-                current_character = game.state.character_at x,y
-                cx,cy = get_sprite_for_character current_character 
-                puts "Current location is: #{@state_change.current_location.inspect}"
-                draw_sprite cx,cy,screen_location(*@state_change.current_location)
-              elsif game.state.is_character_at? x,y
+              #if game.state.is_character_at?(x,y) && @state_change && @state_change.is_a?(StateChange::Movement) && game.state.character_at(x,y) == @state_change.unit
+              if character_to_draw?(x,y)
                 current_character = game.state.character_at x,y
                 cx,cy = get_sprite_for_character current_character 
                 draw_sprite cx,cy,screen_location(x,y)
@@ -155,7 +152,21 @@ module DCGame
             end
           end
         end
+        if @state_change && @state_change.is_a?(StateChange::Movement)
+          #current_character = game.state.character_at x,y
+          current_character = @state_change.unit
+          cx,cy = get_sprite_for_character current_character 
+          #puts "Current location is: #{@state_change.current_location.inspect}"
+          x,y = @state_change.current_location
+          draw_sprite cx,cy,screen_location(*@state_change.current_location) if game.shadows.lit?(x,y)
+        end
       end
+    end
+
+    def character_to_draw?(x,y)
+      return false unless @connection.game.state.is_character_at?(x,y)
+      return false if @state_change && @state_change.masks_character?(@connection.game.state.character_at(x,y))
+      return true
     end
 
     def draw_game
@@ -195,13 +206,17 @@ module DCGame
       end
     end
 
-    def draw_from_sprite_sheet sx, sy, location, target, ss
-      x,y = location
+
+    def load_image_from_sprite_sheet sx,sy,target, ss
+      $LOGGER.info("Creating sprite for #{ss.inspect} at x:#{sx}, y#{sy}")
       rtn  = Surface.new [SPRITE_WIDTH, SPRITE_HEIGHT]
       ss.blit rtn, [0,0], [sx*SPRITE_WIDTH, sy*SPRITE_HEIGHT, SPRITE_WIDTH, SPRITE_HEIGHT]
       rtn = rtn.zoom SPRITE_STRETCH, false
       rtn.set_colorkey ss.colorkey
-      rtn.blit target, [TILE_WIDTH*x,TILE_HEIGHT*y]
+    end
+    def draw_from_sprite_sheet sx, sy, location, target, ss
+      x,y = location
+      (@sprite_cache[[sx,sy,ss]] ||= load_image_from_sprite_sheet sx,sy,target,ss).blit target, [TILE_WIDTH*x,TILE_HEIGHT*y]
     end
 
     def draw_sprite sx,sy,location, target=@screen
@@ -238,10 +253,11 @@ module DCGame
         @cursor[1] -= 1 if e.key == :k
         @cursor[0] += 1 if e.key == :l
         @cursor[0] -= 1 if e.key == :h
+        #@connection.send_object Message::QueryGameState.new if e.key == :q
+        #@connection.game.state = @connection.game.other_state if e.key == :s
         if e.key == :m
           if @path
             # Send a "DO MOVE" message
-            #puts @path.inspect
             #@connection.send_object Message::MoveCurrentCharacter.new @path 
             @connection.send_object Message::Game.new(:move_current_character_on_path, @path)
             @path = nil

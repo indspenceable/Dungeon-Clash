@@ -3,7 +3,12 @@ module DCGame
   # they have a dual purpose - they change the state on being activated
   # but they also help animate that change.
   module StateChange
-    class Movement
+    class StateChange
+      def masks_character? c
+        return false
+      end
+    end
+    class Movement < StateChange
       #TODO there is a bug when you try to move and the last square you can land on before bumping into a baddie is actually occupied...
       FRAMES_PER_STEP = 10
       attr_accessor :unit
@@ -24,6 +29,9 @@ module DCGame
       end
       def activate state
         unit.location = @path.last
+      end
+      def masks_character? c
+        return c == @unit
       end
     end
     class ChangeCurrentCharacter

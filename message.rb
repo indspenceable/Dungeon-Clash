@@ -46,6 +46,17 @@ module DCGame
         connection.game.add_player connection.player if @info
       end
     end
+    class QueryGameState < Dialog
+      def initialize
+        super [:respond, :process_response]
+      end
+      def respond connection
+        @gs = connection.game.state
+      end
+      def process_response connection
+        connection.game.recieve_game_state @gs
+      end
+    end
 
     ###################################
     #           Outliers              #
