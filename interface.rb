@@ -89,7 +89,7 @@ module DCGame
       unless @prerendered_map
         puts "MAKING MAP"
         game = @connection.game
-        @prerendered_map = Surface.new [TILE_WIDTH * game.map.width, TILE_HEIGHT * game]
+        @prerendered_map = Surface.new [TILE_WIDTH * game.map.width, TILE_HEIGHT * game.map.height]
         game.map.width.times do |x|
           game.map.height.times do |y|
             if game.map.tile_at(x,y) != :empty
