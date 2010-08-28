@@ -1,6 +1,7 @@
 require 'board'
 require 'shadow_map'
 require 'character'
+require 'action'
 
 module DCGame
   module Games
@@ -29,10 +30,11 @@ module DCGame
     # is there a character at this location?) then that is a possibility
     # as well.
     class State
-      attr_accessor :characters
+      attr_accessor :characters, :movable
       def initialize setup
         @characters = setup
         @current_character = -1
+        @movable = true
       end 
       def is_character_at? x,y
         @characters.any?{|c| c.location == [x,y]}
@@ -41,7 +43,12 @@ module DCGame
         @characters.find{|c| c.location == [x,y]}
       end
       def set_current_character_by_c_id new_c_id
-        @current_character = new_c_id
+        if @current_character == new_c_id
+          @movable = false
+        else
+          @current_character = new_c_id
+          @movable = true
+        end
       end
       def current_character
         @characters.each do |c|
@@ -50,9 +57,11 @@ module DCGame
         $LOGGER.warn "Trying to fetch current character, but #{@current_character} set."
         nil
       end
-
       def player_for_current_character
         current_character.owner
+      end 
+      def character_by_c_id c_id
+        @characters.find{|c| c.c_id == c_id}
       end
 
       def choose_next_character_to_move 
@@ -138,7 +147,7 @@ module DCGame
   module Server
     class Game < Games::Base
       def initialize name
-        super(name, Board.new(10,10))
+        super(name, Board.new(20,20))
       end
 
       # Inform the game that a player has joined.
@@ -225,51 +234,12 @@ module DCGame
       #   map.tile_at(x,y) != :empty 
       #end
 
-      def move_current_character_on_path path
-        $LOGGER.info "Moving on path right now."
-        current_character_location = @state.current_character.location
-        $LOGGER.warn "Current character is at #{@state.current_character.location.inspect} while the path is starting at #{path.first.inspect}..."
-        last_passable_space = @state.current_character.location
-        success = true
-        path.each do |l|
-          if passable? l, @state.player_for_current_character
-            current_character_location = l
-            #actual_move_path << l
-            last_passable_space = l if passable?(l)
-          else
-            success = false 
-            break
-          end
-        end
-        actual_move_path = []
-        x = false
-        path.each do |l|
-          unless x
-            actual_move_path << l
-            x = (l==last_passable_space)
-          end
-        end
-
-        #we need to increase this character's fatigue
-        #TODO Design question - Should you be penalized for the ammount you try to move?
-        # or the ammount you move?
-        @state.increase_fatigue(@state.current_character,
-                                 actual_move_path.size*cost_per_move(@state.current_character))
-
-        @state.current_character.location = actual_move_path.last
-        if success
-          # TELL THE CURRENT PLAYER THAT THEY MAY DO A NON-MOVE ACTION
-          msg = Message::Game.new(:move_unit, [actual_move_path, @state.current_character.c_id])
-        else
-          # BUMP!!!
-          # so we ne
-          # So, we need to pick a new character to move
-          @state.choose_next_character_to_move
-          msg = Message::Game.new(:move_unit, [actual_move_path, @state.current_character.c_id])
-        end
-
+      def action act
+        $LOGGER.warn "Trying to act."
+        state_changes = act.enact self  
+        $LOGGER.warn "Done enacting."
         @players.each do |p|
-          p.owner.send_object msg
+          p.owner.send_object Message::Game.new(:accept_state_changes, state_changes)
         end
       end
 
@@ -395,15 +365,23 @@ module DCGame
         @state_change_queue.delete_at(0)
       end
 
+      def accept_state_changes list
+        $LOGGER.warn "ACCEPT STATE_CHANGES."
+        list.each do |sc|
+          enqueue_state_change sc
+        end
+      end
+
       #TODO rename this to move_character
       def move_unit args
+        $LOGGER.warn "MOVE UNITS"
         path, new_current_character = *args
         #puts "#{path.inspect} is path"
         enqueue_state_change StateChange::Movement.new(path, @state.current_character)
-        if @state.current_character.c_id != new_current_character
-          enqueue_state_change StateChange::ChangeCurrentCharacter.new(new_current_character)
-        else
-        end
+        #if @state.current_character.c_id != new_current_character
+        enqueue_state_change StateChange::ChangeCurrentCharacter.new(new_current_character)
+        #else
+        #end
       end
     end
   end

@@ -1,6 +1,7 @@
 require 'rubygems'
 require 'rubygame'
 require 'state_change'
+#require 'action'
 
 include Rubygame
 
@@ -28,8 +29,8 @@ module DCGame
     TILE_WIDTH = SPRITE_WIDTH*SPRITE_STRETCH
     TILE_HEIGHT = SPRITE_HEIGHT*SPRITE_STRETCH
 
-    TILES_WIDE = 10
-    TILES_HIGH = 10
+    TILES_WIDE = 20
+    TILES_HIGH = 20
 
     #-------------------------------
     #        DISPLAY METHODS
@@ -154,11 +155,11 @@ module DCGame
         end
         if @state_change && @state_change.is_a?(StateChange::Movement)
           #current_character = game.state.character_at x,y
-          current_character = @state_change.unit
+          current_character = game.state.character_by_c_id @state_change.unit
           cx,cy = get_sprite_for_character current_character 
           #puts "Current location is: #{@state_change.current_location.inspect}"
           x,y = @state_change.current_location
-          draw_sprite cx,cy,screen_location(*@state_change.current_location) if game.shadows.lit?(x,y)
+          draw_sprite cx,cy,screen_location(*@state_change.current_location) if game.shadows.lit?(x,y) || current_character.owner == @name
         end
       end
     end
@@ -255,15 +256,35 @@ module DCGame
         @cursor[0] -= 1 if e.key == :h
         #@connection.send_object Message::QueryGameState.new if e.key == :q
         #@connection.game.state = @connection.game.other_state if e.key == :s
-        if e.key == :m
-          if @path
-            # Send a "DO MOVE" message
-            #@connection.send_object Message::MoveCurrentCharacter.new @path 
-            @connection.send_object Message::Game.new(:move_current_character_on_path, @path)
-            @path = nil
+        if e.key == :a && !@path
+          unless @attacking
+            @attacking = true
           else
-            # Calculate path to target
-            @path = @connection.game.calculate_path_between @connection.game.state.current_character.location, @cursor
+            if @connection.game.state.is_character_at?(*@cursor) 
+              @connection.send_object Message::Game.new(:action, Action::Attack.new(*@cursor))
+            else
+              @attacking = nil
+            end
+          end
+        end
+        if e.key == :m
+          if @connection.game.state.movable
+            if @path
+              # Send a "DO MOVE" message
+
+              #TODO this is going to send a "suggest state change
+              #@connection.send_object Message::Game.new(:move_current_character_on_path, @path)
+
+              @connection.send_object Message::Game.new(:action, Action::Movement.new(@path))
+              @path = nil
+            else
+              # Calculate path to target
+              #TODO make sure it's actually your turn to move.
+              @path = @connection.game.calculate_path_between @connection.game.state.current_character.location, @cursor
+            end
+          else
+            $LOGGER.info("You already moved this turn! Action going to the next person.")
+            @connection.send_object Message::Game.new(:action, Action::EndTurn.new)
           end
         end
 

@@ -80,9 +80,11 @@ module DCGame
         queue.each do |e|
           EventMachine::stop_event_loop if e.is_a? Events::QuitRequested
           if e.is_a?(Events::KeyPressed) && c.game && c.game.mode == :select_characters
+            
             $LOGGER.info "This player has chosen characters."
             c.send_object Message::ChooseCharacters.new []
           else
+            #TODO don't process keys until the game is connected.
             controller.process_event e
           end
         end
@@ -91,7 +93,8 @@ module DCGame
         if c.game
           graphics.draw c.game
         else
-          graphics.draw c.game_list 
+          #TODO graphics.draw_connecting_screen
+          #graphics.draw c.game_list 
         end
 
       end

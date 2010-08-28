@@ -5,12 +5,16 @@ module DCGame
   module StateChange
     class StateChange
       def masks_character? c
-        return false
+        false
+      end
+      def finished?
+        true
+      end
+      def step
       end
     end
     class Movement < StateChange
-      #TODO there is a bug when you try to move and the last square you can land on before bumping into a baddie is actually occupied...
-      FRAMES_PER_STEP = 10
+      #FRAMES_PER_STEP = 10
       attr_accessor :unit
       def initialize path, unit
         @unit = unit
@@ -21,31 +25,30 @@ module DCGame
         @path[@current_step]
       end
       def step
-        puts "STEP"
         @current_step += 1
       end
       def finished?
         @current_step >= @path.size-1
       end
       def activate state
-        unit.location = @path.last
+        state.character_by_c_id(@unit).location = @path.last
       end
       def masks_character? c
-        return c == @unit
+        return c.c_id == @unit
       end
     end
-    class ChangeCurrentCharacter
+    class ChangeCurrentCharacter < StateChange
       def initialize new_char
         @new_current_character = new_char
       end
-      def step
-      end
-      def finished?
-        true
-      end
       def activate state
-        puts "ACTIVATING"
         state.set_current_character_by_c_id @new_current_character
+      end
+    end
+    class TireCurrentCharacter < StateChange
+      def activate state
+        $LOGGER.warn "HI!"
+        state.movable = false
       end
     end
   end
