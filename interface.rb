@@ -1,7 +1,7 @@
 require 'rubygems'
 require 'rubygame'
 require 'state_change'
-#require 'action'
+require 'action'
 
 include Rubygame
 
@@ -11,12 +11,7 @@ module DCGame
       @connection = connect
       initialize_output
       initialize_input
-
-      @animation = nil
-            
     end
-
-
     #-------------------------------
     #        CONSTANTS
     #-------------------------------
@@ -24,13 +19,13 @@ module DCGame
     SPRITE_HEIGHT = 8
     SPRITE_WIDTH = 8
 
-    SPRITE_STRETCH = 5
+    SPRITE_STRETCH = 4
 
     TILE_WIDTH = SPRITE_WIDTH*SPRITE_STRETCH
     TILE_HEIGHT = SPRITE_HEIGHT*SPRITE_STRETCH
 
-    TILES_WIDE = 20
-    TILES_HIGH = 20
+    TILES_WIDE = 15
+    TILES_HIGH = 15
 
     #-------------------------------
     #        DISPLAY METHODS
@@ -53,6 +48,7 @@ module DCGame
       @name = @connection.name
 
       @offset = [0,0]
+      @pending_action = nil
     end
 
     def draw target
@@ -71,25 +67,10 @@ module DCGame
       if target.is_a? Client::Game
         draw_game
       end
-      #if @animation
-      #  @animation.step
-      #  @animation = nil if @animation.finished?
-      #end
       @screen.update
     end
 
     def draw_map
-      #game = @connection.game
-      #TILES_WIDE.times do |x|
-      #  TILES_HIGH.times do |y|
-      #    if game.map.tile_at(@offset[0]+x,@offset[1]+y) != :empty
-      #      draw_tile 0,0, [x,y]
-      #    else
-      #      draw_tile 12,0, [x,y]
-      #    end
-      #  end
-      #end
-      #return
       unless @prerendered_map
         game = @connection.game
         @prerendered_map = Surface.new [TILE_WIDTH * game.map.width, TILE_HEIGHT * game.map.height]
@@ -195,18 +176,29 @@ module DCGame
         draw_units
         #draw_shadows
         draw_tile 0,9, [@cursor[0]-@offset[0], @cursor[1]-@offset[1]]
+        # TODO Fix this - this should be streamlined. maybe keep draw path, but change draw_attack to
+        # draw effect. 
         draw_path
+        draw_pending_action
+
       end
     end
 
     def draw_path
       if @path
         @path.each do |l|
-          draw_sprite 3,3,screen_location(*l)
+          draw_sprite 11,9,screen_location(*l)
         end
       end
     end
 
+    def draw_pending_action
+      if @pending_action
+        @pending_action.highlights.each do |l|
+          draw_sprite 11,9,screen_location(*l)
+        end
+      end
+    end
 
     def load_image_from_sprite_sheet sx,sy,target, ss
       $LOGGER.info("Creating sprite for #{ss.inspect} at x:#{sx}, y#{sy}")
@@ -233,6 +225,7 @@ module DCGame
 
     def initialize_input
       @cursor = [0,0]
+      @pending_action = nil
     end
 
     def normalize_cursor
@@ -248,6 +241,7 @@ module DCGame
       @offset[1] += 1 while @cursor[1] >= (@offset[1] + TILES_HIGH)
     end
 
+    #TODO this needs to be refactored like whoa
     def process_event e 
       if e.is_a? Events::KeyPressed
         @cursor[1] += 1 if e.key == :j
@@ -256,7 +250,8 @@ module DCGame
         @cursor[0] -= 1 if e.key == :h
         #@connection.send_object Message::QueryGameState.new if e.key == :q
         #@connection.game.state = @connection.game.other_state if e.key == :s
-        if e.key == :a && !@path
+        if e.key == :a
+          @path = nil
           unless @attacking
             @attacking = true
           else
@@ -269,27 +264,23 @@ module DCGame
         end
         if e.key == :m
           if @connection.game.state.movable
-            if @path
-              # Send a "DO MOVE" message
-
-              #TODO this is going to send a "suggest state change
-              #@connection.send_object Message::Game.new(:move_current_character_on_path, @path)
-
+            if @pending_action || !@pending_action.is_a?(PendingAction::Movement)
+              @pending_action = PendingAction::Movement.new @connection.game
+              puts @pending_action.inspect
+            else
               @connection.send_object Message::Game.new(:action, Action::Movement.new(@path))
               @path = nil
-            else
+            end
               # Calculate path to target
               #TODO make sure it's actually your turn to move.
-              @path = @connection.game.calculate_path_between @connection.game.state.current_character.location, @cursor
-            end
+
+              #REMEMBER - this works!
+              #@path = @connection.game.calculate_path_between @connection.game.state.current_character.location, @cursor
           else
             $LOGGER.info("You already moved this turn! Action going to the next person.")
             @connection.send_object Message::Game.new(:action, Action::EndTurn.new)
           end
         end
-
-        #@connection.send_object Message::MoveCurrentCharacter.new @cursor if e.key == :k
-
         normalize_cursor
       end
     end
