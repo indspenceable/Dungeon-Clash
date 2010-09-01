@@ -6,6 +6,14 @@ require 'action'
 include Rubygame
 
 module DCGame
+  class InputAction
+    attr_accessor :klass
+    attr_reader :key
+    def initialize keysym, klass 
+      @klass = klass
+      @key = keysym
+    end
+  end
   class Interface
     def initialize connect
       @connection = connect
@@ -44,7 +52,7 @@ module DCGame
       @sprite_cache = Hash.new
 
       #screen
-      @screen = Screen.new [TILE_WIDTH * TILES_WIDE, TILE_HEIGHT * TILES_HIGH]
+      @screen = Screen.new [TILE_WIDTH * TILES_WIDE, TILE_HEIGHT * TILES_HIGH + 8]
       @name = @connection.name
 
       @offset = [0,0]
@@ -175,12 +183,11 @@ module DCGame
         @text.render("Game is running.", true, [0,0,0]).blit @screen, [0,0]
         draw_units
         #draw_shadows
-        draw_tile 0,9, [@cursor[0]-@offset[0], @cursor[1]-@offset[1]]
         # TODO Fix this - this should be streamlined. maybe keep draw path, but change draw_attack to
         # draw effect. 
         draw_path
         draw_pending_action
-
+        draw_tile 0,9, [@cursor[0]-@offset[0], @cursor[1]-@offset[1]]
       end
     end
 
@@ -195,7 +202,7 @@ module DCGame
     def draw_pending_action
       if @pending_action
         @pending_action.highlights.each do |l|
-          draw_sprite 11,9,screen_location(*l)
+          draw_tile 5,10,screen_location(*l)
         end
       end
     end
@@ -226,6 +233,7 @@ module DCGame
     def initialize_input
       @cursor = [0,0]
       @pending_action = nil
+      @actions = [InputAction.new(:a,Action::Attack), InputAction.new(:m, Action::Movement)]
     end
 
     def normalize_cursor
@@ -248,41 +256,19 @@ module DCGame
         @cursor[1] -= 1 if e.key == :k
         @cursor[0] += 1 if e.key == :l
         @cursor[0] -= 1 if e.key == :h
-        #@connection.send_object Message::QueryGameState.new if e.key == :q
-        #@connection.game.state = @connection.game.other_state if e.key == :s
-        if e.key == :a
-          @path = nil
-          unless @attacking
-            @attacking = true
-          else
-            if @connection.game.state.is_character_at?(*@cursor) 
-              @connection.send_object Message::Game.new(:action, Action::Attack.new(*@cursor))
-            else
-              @attacking = nil
-            end
-          end
-        end
-        if e.key == :m
-          if @connection.game.state.movable
-            if @pending_action || !@pending_action.is_a?(PendingAction::Movement)
-              @pending_action = PendingAction::Movement.new @connection.game
-              puts @pending_action.inspect
-            else
-              @connection.send_object Message::Game.new(:action, Action::Movement.new(@path))
-              @path = nil
-            end
-              # Calculate path to target
-              #TODO make sure it's actually your turn to move.
 
-              #REMEMBER - this works!
-              #@path = @connection.game.calculate_path_between @connection.game.state.current_character.location, @cursor
-          else
-            $LOGGER.info("You already moved this turn! Action going to the next person.")
-            @connection.send_object Message::Game.new(:action, Action::EndTurn.new)
+        i_action = @actions.find{|a| a.key == e.key}
+        if i_action
+          if !@pending_action.is_a?(i_action.klass)
+            @pending_action = i_action.klass.new @connection.game
+          elsif @pending_action.highlights.include? @cursor
+            @pending_action.prep(@cursor, @connection.game)
+            @connection.send_object Message::Game.new(:action,@pending_action)
+            @pending_action = nil
           end
         end
-        normalize_cursor
       end
+      normalize_cursor
     end
   end
 end

@@ -51,5 +51,7 @@ module DCGame
         state.movable = false
       end
     end
+    class IncreaseFatigue < StateChange
+    end
   end
 end
