@@ -13,6 +13,9 @@ module DCGame
       @klass = klass
       @key = keysym
     end
+    def requires_movable
+      @klass.requires_movable
+    end
   end
   class Interface
     def initialize connect
@@ -258,7 +261,7 @@ module DCGame
         @cursor[0] -= 1 if e.key == :h
 
         i_action = @actions.find{|a| a.key == e.key}
-        if i_action
+        if i_action && (@connection.game.state.movable || !i_action.requires_movable)
           if !@pending_action.is_a?(i_action.klass)
             @pending_action = i_action.klass.new @connection.game
           elsif @pending_action.highlights.include? @cursor

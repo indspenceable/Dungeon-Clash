@@ -29,6 +29,10 @@ module DCGame
       def enact game
         raise "enact method not overwritten in #{self.class}"
       end
+
+      def self.requires_movable
+        true
+      end
     end
 
     class EndTurn < Action
@@ -56,6 +60,9 @@ module DCGame
       end
       def enact game 
         raise "Action::Attack#enact unimplemented."
+      end
+      def self.requires_movable
+        false
       end
     end
     class Wait < Action
