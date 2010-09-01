@@ -2,22 +2,39 @@ require 'state_change'
 require 'message'
 module DCGame
   module Action
+    # An action is something that the player does. Core examples are Movement, Attacking, and ending 
+    # the turn. Any special abilities are actions as well. Subclassses of Action represent each 
+    # different permutation. Actions talk to the game state, the interface, AND the server.
+    # so, they could potentially be restructured? But I'm unsure how would make sense.
     class Action
-      def highlights; @tiles end
-      def initialize
-        raise "initialize not overwritten for #{self.class}"
+      #Get the list of tiles to highlight in the interface.
+      def highlights
+        @tiles
       end
+      #Does the player need to confirm this action? Examples where this will be overridden - ENDTURN, WAIT
+      def no_confirm
+        false
+      end
+      #Figure out how the gamestate will change, by looking at the gamestate on the server. Generate
+      # the appropriate series of StateChange s.
       def enact game
         raise "enact not overwritten for #{self.class}."
       end
+      # Delagate to the classes #prepare. Return self.
       def prep cursor, game
-        raise "prep not overwritten for #{self.class}."
+        prepare cursor, game
+        self
+      end
+      #an action has an enact method, which applies it to the game, and then returns a StateChange
+      def enact game
+        raise "enact method not overwritten in #{self.class}"
       end
     end
 
-
-    #an action has an enact method, which applies it to the game, and then returns a StateChange
     class EndTurn < Action
+      def initialize
+        @tiles = [game.state.current_character.location]
+      end
       def enact game
         game.state.choose_next_character_to_move
         state_changes = [StateChange::ChangeCurrentCharacter.new game.state.current_character.c_id]
@@ -34,15 +51,19 @@ module DCGame
           @tiles << t if game.state.is_character_at?(x,y)
         end
       end
+      def prepare
+        raise "Action::Attack#prepare unimplemented."
+      end
       def enact game 
+        raise "Action::Attack#enact unimplemented."
       end
     end
     class Wait < Action
       def initialize game
         @tiles = [game.state.current_character.location]
       end
-      def generate_action cursor, game
-        Action::Wait.new
+      def prepare cursor, game
+        #do nothing.
       end
       def enact game
         @current_character = game.state.current_character
@@ -75,9 +96,8 @@ module DCGame
           open_list.sort { |a,b| b[1].length <=> a[1].length }
         end
       end
-      def generate_action cursor, game
+      def prepare_action cursor, game
         @path = game.calculate_path_between game.state.current_character.location, cursor
-        self
       end
       def enact game
         path = @path

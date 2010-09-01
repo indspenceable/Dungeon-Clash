@@ -262,8 +262,7 @@ module DCGame
           if !@pending_action.is_a?(i_action.klass)
             @pending_action = i_action.klass.new @connection.game
           elsif @pending_action.highlights.include? @cursor
-            @pending_action.prep(@cursor, @connection.game)
-            @connection.send_object Message::Game.new(:action,@pending_action)
+            @connection.send_object Message::Game.new(:action,@pending_action.prep(@cursor, @connection.game))
             @pending_action = nil
           end
         end
