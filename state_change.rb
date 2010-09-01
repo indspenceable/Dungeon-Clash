@@ -39,7 +39,7 @@ module DCGame
     class IncreaseFatigue < StateChange
       def initialize amt, char
         @unit = char
-        @ammount_to_increase_fatigue
+        @ammount_to_increase_fatigue = amt
       end
       def activate state
         state.increase_fatigue state.character_by_c_id(@unit), @ammount_to_increase_fatigue

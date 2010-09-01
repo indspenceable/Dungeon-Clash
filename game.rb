@@ -141,7 +141,7 @@ module DCGame
   module Server
     class Game < Games::Base
       def initialize name
-        super(name, Board.new(5,5))
+        super(name, Board.new(15,15))
       end
 
       # Inform the game that a player has joined.
