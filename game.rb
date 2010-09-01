@@ -64,13 +64,7 @@ module DCGame
         @characters.find{|c| c.c_id == c_id}
       end
 
-      def choose_next_character_to_move 
-        #@characters.sort do |a, b| 
-        #  if a.fatigue == b.fatigue 
-        #    break a.tie_fatigue <=> b.tie_fatigue
-        #  end
-        #  a.fatigue <=> b.fatigue
-        #end
+      def choose_next_character_to_move!
         @characters.each{ |c| c.fatigue -= 1 } until @characters.any? { |c| c.fatigue == 0 } 
         chars_with_zero_fatigue = @characters.find_all{ |c| c.fatigue == 0 }
         chars_with_zero_fatigue.each{ |c| c.tie_fatigue -= 1 } until chars_with_zero_fatigue.any? { |c| c.tie_fatigue == 0 }
@@ -198,7 +192,7 @@ module DCGame
             @state.characters[n].tie_fatigue = n
           end
 
-          @state.choose_next_character_to_move 
+          @state.choose_next_character_to_move!
 
           players.each do |p|
             p.owner.send_object Message::StartGame.new @state
@@ -235,9 +229,10 @@ module DCGame
       #end
 
       def action act
-        $LOGGER.warn "Trying to act."
         state_changes = act.enact self  
-        $LOGGER.warn "Done enacting."
+        state_changes.each do |sc|
+          sc.activate @state
+        end
         @players.each do |p|
           p.owner.send_object Message::Game.new(:accept_state_changes, state_changes)
         end

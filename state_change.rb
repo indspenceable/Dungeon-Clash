@@ -14,7 +14,6 @@ module DCGame
       end
     end
     class Movement < StateChange
-      #FRAMES_PER_STEP = 10
       attr_accessor :unit
       def initialize path, unit
         @unit = unit
@@ -37,6 +36,22 @@ module DCGame
         return c.c_id == @unit
       end
     end
+    class IncreaseFatigue < StateChange
+      def initialize amt, char
+        @unit = char
+        @ammount_to_increase_fatigue
+      end
+      def activate state
+        state.increase_fatigue state.character_by_c_id(@unit), @ammount_to_increase_fatigue
+      end
+    end
+    class ChooseNextCharacter < StateChange
+      def activate state
+        state.choose_next_character_to_move!
+      end
+    end
+
+      #Deprecated. :)
     class ChangeCurrentCharacter < StateChange
       def initialize new_char
         @new_current_character = new_char
@@ -47,11 +62,8 @@ module DCGame
     end
     class TireCurrentCharacter < StateChange
       def activate state
-        $LOGGER.warn "HI!"
         state.movable = false
       end
-    end
-    class IncreaseFatigue < StateChange
     end
   end
 end

@@ -36,7 +36,7 @@ module DCGame
         @tiles = [game.state.current_character.location]
       end
       def enact game
-        game.state.choose_next_character_to_move
+        game.state.choose_next_character_to_move!
         state_changes = [StateChange::ChangeCurrentCharacter.new game.state.current_character.c_id]
       end
     end
@@ -100,6 +100,8 @@ module DCGame
         @path = game.calculate_path_between game.state.current_character.location, cursor
       end
       def enact game
+        state_changes = Array.new
+        
         path = @path
         $LOGGER.info "Moving on path right now."
         current_character_location = game.state.current_character.location
@@ -125,19 +127,20 @@ module DCGame
           end
         end
 
-        #TODO this should just call all of the state_changes activate methods
-        # ????
-        game.state.increase_fatigue(game.state.current_character,
-                                    actual_move_path.size*game.cost_per_move(game.state.current_character))
+        #game.state.increase_fatigue(game.state.current_character,
+        #                            actual_move_path.size*game.cost_per_move(game.state.current_character))
+        
 
-        game.state.current_character.location = actual_move_path.last
-        state_changes = Array.new << StateChange::Movement.new(actual_move_path, game.state.current_character.c_id)
+        #game.state.current_character.location = actual_move_path.last
+        state_changes << StateChange::Movement.new(actual_move_path, game.state.current_character.c_id)
+        state_changes << StateChange::IncreaseFatigue.new(actual_move_path.size*game.cost_per_move(game.state.current_character), game.state.current_character.c_id)
 
         if success
           state_changes << StateChange::TireCurrentCharacter.new()
         else
-          game.state.choose_next_character_to_move
-          state_changes << StateChange::ChangeCurrentCharacter.new(game.state.current_character.c_id)
+          #game.state.choose_next_character_to_move!
+          #state_changes << StateChange::ChangeCurrentCharacter.new(game.state.current_character.c_id)
+          state_changes << StateChange::ChooseNextCharacter.new()
         end
         state_changes
       end
