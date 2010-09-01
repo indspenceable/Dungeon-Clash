@@ -20,9 +20,9 @@ module DCGame
       def enact game
         raise "enact not overwritten for #{self.class}."
       end
-      # Delagate to the classes #prepare. Return self.
+      # Delagate to the classes #prepare_action. Return self.
       def prep cursor, game
-        prepare cursor, game
+        prepare_action cursor, game
         self
       end
       #an action has an enact method, which applies it to the game, and then returns a StateChange
