@@ -65,10 +65,12 @@ module DCGame
       end
 
       def choose_next_character_to_move!
+        current = current_character
         @characters.each{ |c| c.fatigue -= 1 } until @characters.any? { |c| c.fatigue == 0 } 
         chars_with_zero_fatigue = @characters.find_all{ |c| c.fatigue == 0 }
         chars_with_zero_fatigue.each{ |c| c.tie_fatigue -= 1 } until chars_with_zero_fatigue.any? { |c| c.tie_fatigue == 0 }
         @current_character = @characters.find{ |c| (c.fatigue == 0) && (c.tie_fatigue == 0) }.c_id
+        @movable = true if current != current_character
       end
 
       def increase_fatigue character, amt
@@ -190,6 +192,7 @@ module DCGame
           @state.characters.size.times do |n|
             @state.characters[n].fatigue = 0
             @state.characters[n].tie_fatigue = n
+            @state.characters[n].set_c_id n
           end
 
           @state.choose_next_character_to_move!

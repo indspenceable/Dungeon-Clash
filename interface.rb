@@ -13,8 +13,8 @@ module DCGame
       @klass = klass
       @key = keysym
     end
-    def requires_movable
-      @klass.requires_movable
+    def primary_action
+      @klass.primary_action
     end
   end
   class Interface
@@ -38,6 +38,14 @@ module DCGame
     TILES_WIDE = 15
     TILES_HIGH = 15
 
+    TEXT_SIZE = 12
+
+    PANEL_ROWS = 3
+    PANEL_HEIGHT = 3*12
+
+    SCREEN_WIDTH = TILE_WIDTH * TILES_WIDE
+    SCREEN_HEIGHT = TILE_HEIGHT*TILES_HIGH + PANEL_HEIGHT
+
     #-------------------------------
     #        DISPLAY METHODS
     #-------------------------------
@@ -45,7 +53,7 @@ module DCGame
     def initialize_output
       # TEXT
       TTF.setup
-      @text = TTF.new('font.ttf',12)
+      @text = TTF.new('font.ttf',TEXT_SIZE)
 
       #sprites
       @sprite_sheet = Surface.load 'sprite.png'
@@ -55,7 +63,7 @@ module DCGame
       @sprite_cache = Hash.new
 
       #screen
-      @screen = Screen.new [TILE_WIDTH * TILES_WIDE, TILE_HEIGHT * TILES_HIGH + 8]
+      @screen = Screen.new [SCREEN_WIDTH, SCREEN_HEIGHT]
       @name = @connection.name
 
       @offset = [0,0]
@@ -162,6 +170,20 @@ module DCGame
       return true
     end
 
+    def draw_panel
+      if !@panel
+        @panel = Surface.new([SCREEN_WIDTH, PANEL_HEIGHT])
+        @panel.fill [255,255,255]
+        if @connection.game.state.is_character_at?(*@cursor) && @connection.game.shadows.lit?(*@cursor)
+          char = @connection.game.state.character_at(*@cursor)
+          @text.render("Owner is: #{char.owner}, and id: #{char.c_id}.", true, [0,0,0]).blit @panel, [0,0]
+          @text.render("Class is: #{char.job}.", true, [0,0,0]).blit @panel, [0, TEXT_SIZE]
+          @text.render("HP #{char.health}/#{char.max_health}", true, [0,0,0]).blit @panel, [0, TEXT_SIZE*2]
+        end
+      end
+      @panel.blit(@screen,[0,TILES_HIGH*TILE_HEIGHT])
+    end
+
     def draw_game
       @screen.fill [0,0,0]
       draw_map
@@ -188,8 +210,10 @@ module DCGame
         #draw_shadows
         # TODO Fix this - this should be streamlined. maybe keep draw path, but change draw_attack to
         # draw effect. 
-        draw_path
+        #draw_path
         draw_pending_action
+        draw_panel
+        #cursor
         draw_tile 0,9, [@cursor[0]-@offset[0], @cursor[1]-@offset[1]]
       end
     end
@@ -236,7 +260,7 @@ module DCGame
     def initialize_input
       @cursor = [0,0]
       @pending_action = nil
-      @actions = [InputAction.new(:a,Action::Attack), InputAction.new(:m, Action::Movement)]
+      @actions = [InputAction.new(:a,Action::Attack), InputAction.new(:m, Action::Movement), InputAction.new(:w, Action::EndTurn)]
     end
 
     def normalize_cursor
@@ -255,15 +279,21 @@ module DCGame
     #TODO this needs to be refactored like whoa
     def process_event e 
       if e.is_a? Events::KeyPressed
+        @panel = nil
+        #Whenever you do something on the keyboard, reset the @panel
         @cursor[1] += 1 if e.key == :j
         @cursor[1] -= 1 if e.key == :k
         @cursor[0] += 1 if e.key == :l
         @cursor[0] -= 1 if e.key == :h
 
         i_action = @actions.find{|a| a.key == e.key}
-        if i_action && (@connection.game.state.movable || !i_action.requires_movable)
+        if i_action && (@connection.game.state.movable || !i_action.primary_action)
           if !@pending_action.is_a?(i_action.klass)
-            @pending_action = i_action.klass.new @connection.game
+            if i_action.klass.no_confirm
+              @connection.send_object Message::Game.new(:action, i_action.klass.new(@connection.game))
+            else
+              @pending_action = i_action.klass.new @connection.game
+            end
           elsif @pending_action.highlights.include? @cursor
             @connection.send_object Message::Game.new(:action,@pending_action.prep(@cursor, @connection.game))
             @pending_action = nil
