@@ -236,9 +236,22 @@ module DCGame
         state_changes.each do |sc|
           sc.activate @state
         end
+        state_changes += ensuing_state_changes
         @players.each do |p|
           p.owner.send_object Message::Game.new(:accept_state_changes, state_changes)
         end
+      end
+
+      def ensuing_state_changes
+        state_changes = Array.new
+        begin
+          @state.characters.each do |c|
+            if c.health < 0
+              state_changes << StateChange::Death.new(c.c_id)
+            end
+          end
+        end
+        state_changes 
       end
 
       def cost_per_move character; 1 end
@@ -298,7 +311,7 @@ module DCGame
         # a,b   c,d are all older
         # tiles
         path = nil
-        return path unless would_path_through?(*dest)
+        return path unless would_path_through?(true, *dest)
         while tiles_to_check.length > 0 do
           tiles_to_check.sort { |f,s| f[1].size <=> s[1].size }
           current_tile = tiles_to_check.delete_at(0)
@@ -307,7 +320,7 @@ module DCGame
             break
           end
           x,y = current_tile[0]
-          if would_path_through?(x,y)
+          if would_path_through?(true,x,y)
             unless tiles_seen.include? current_tile[0]
               tiles_seen << current_tile[0]
               rest_of_path = current_tile[1] + [[x,y]]
@@ -322,11 +335,11 @@ module DCGame
         return path
       end
 
-      def would_path_through?(x,y)
+      def would_path_through?(ignore_my_characters, x,y)
         return false if @map.tile_at(x,y) != :empty
         if @shadows.lit?(x,y)
           if @state.is_character_at?(x,y)
-            return false if @state.character_at(x,y).owner != @player_name
+            return false unless ignore_my_characters && @state.character_at(x,y).owner == @player_name
           end
         end
         true

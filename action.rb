@@ -1,5 +1,7 @@
 require 'state_change'
 require 'message'
+require 'set'
+
 module DCGame
   module Action
     # An action is something that the player does. Core examples are Movement, Attacking, and ending 
@@ -12,7 +14,7 @@ module DCGame
         @tiles
       end
       #Does the player need to confirm this action? Examples where this will be overridden - ENDTURN, WAIT
-      def no_confirm
+      def self.no_confirm
         false
       end
       #Figure out how the gamestate will change, by looking at the gamestate on the server. Generate
@@ -29,19 +31,53 @@ module DCGame
       def enact game
         raise "enact method not overwritten in #{self.class}"
       end
+      def prepare_action cursor, game
+        raise "prepare_action method not overwritten in #{self.class}"
+      end
 
-      def self.requires_movable
+      def self.primary_action
         true
       end
     end
-
-    class EndTurn < Action
-      def initialize
-        @tiles = [game.state.current_character.location]
+    
+    class Teleport < Action
+      def initialize game
+        @tiles = Set.new
+        cx,cy = game.state.current_character.location
+        game.map.width.times do |x| 
+          game.map.height.times do |y|
+            dist = (x-cx).abs + (y-cy).abs 
+            if dist > 3 && dist < 6 && game.would_path_through?(false, x,y)
+              @tiles << [x,y]
+            end
+          end
+        end
+      end
+      def prepare_action cursor, game
+        @target = [*cursor]
       end
       def enact game
-        game.state.choose_next_character_to_move!
-        state_changes = [StateChange::ChangeCurrentCharacter.new game.state.current_character.c_id]
+        state_changes = Array.new
+        cur_location = game.state.current_character.location
+        unless game.state.is_character_at?(*@target)
+          state_changes << StateChange::Movement.new([cur_location,@target]*10, game.state.current_character.c_id)
+        end
+        state_changes << StateChange::IncreaseFatigue.new(10, game.state.current_character.c_id)
+      end
+    end
+    class EndTurn < Action
+      def initialize game
+        @highlights = 0
+      end
+      def self.no_confirm
+        true
+      end
+      def self.primary_action
+        false
+      end
+      def enact game
+        #game.state.choose_next_character_to_move!
+        state_changes = [StateChange::ChooseNextCharacter.new]
       end
     end
 
@@ -49,49 +85,33 @@ module DCGame
       def initialize game
         x,y = game.state.current_character.location
         tiles_to_check = Array.new << [x+1,y] << [x-1,y] << [x,y+1] << [x,y-1]
-        @tiles = Array.new
+        @tiles = Set.new
         tiles_to_check.each do |t|
           x,y = t
           @tiles << t if game.state.is_character_at?(x,y)
         end
       end
-      def prepare
-        raise "Action::Attack#prepare unimplemented."
+      def prepare_action cursor, game
+        @target_id = game.state.character_at(*cursor).c_id
       end
       def enact game 
-        raise "Action::Attack#enact unimplemented."
+        #game.state.character_by_c_id(@target_id).health -= 3
+        [StateChange::DealDamage.new(3,@target_id), StateChange::IncreaseFatigue.new(3, game.state.current_character.c_id)]
       end
-      def self.requires_movable
+      def self.primary_action
         false
       end
     end
-    class Wait < Action
-      def initialize game
-        @tiles = [game.state.current_character.location]
-      end
-      def prepare cursor, game
-        #do nothing.
-      end
-      def enact game
-        @current_character = game.state.current_character
-        total = 0
-        begin
-          @current_character.increase_fatigue @current_character, 1
-          total += 1
-        end while @current_character == game.state.current_character
-      end
-    end
-
     class Movement < Action
       def initialize game
         open_list = Array.new << [game.state.current_character.location, []]
         closed_list = Array.new
-        @tiles = Array.new
-        while open_list.size > 0 && open_list.first[1].size <= 10
+        @tiles = Set.new
+        while open_list.size > 0 && open_list.first[1].size <= 5
           current = open_list.delete_at(0)
           l = current[0]
           closed_list << l
-          if game.would_path_through? *l
+          if game.would_path_through? true, *l
             @tiles << l
             x,y = l
             current_trail = current[1]

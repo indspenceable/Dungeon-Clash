@@ -13,6 +13,8 @@ module DCGame
       def step
       end
     end
+    class Death < StateChange
+    end
     class Movement < StateChange
       attr_accessor :unit
       def initialize path, unit
@@ -36,6 +38,15 @@ module DCGame
         return c.c_id == @unit
       end
     end
+    class DealDamage < StateChange
+      def initialize amt, char
+        @unit = char
+        @ammount_to_damage = amt
+      end
+      def activate state
+        state.character_by_c_id(@unit).health -= @ammount_to_damage
+      end
+    end
     class IncreaseFatigue < StateChange
       def initialize amt, char
         @unit = char
@@ -51,8 +62,8 @@ module DCGame
       end
     end
 
-      #Deprecated. :)
-    class ChangeCurrentCharacter < StateChange
+    #Deprecated. :)
+    class DEP_ChangeCurrentCharacter < StateChange
       def initialize new_char
         @new_current_character = new_char
       end

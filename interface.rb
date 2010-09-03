@@ -78,6 +78,7 @@ module DCGame
         @state_change.activate @connection.game.state
         @connection.game.calculate_shadows @name
         @state_change = @connection.game.get_next_state_change
+        @panel = nil
       end
       #if at this point we have one, then step.
       @state_change.step if @state_change
@@ -229,12 +230,12 @@ module DCGame
     def draw_pending_action
       if @pending_action
         @pending_action.highlights.each do |l|
-          draw_tile 5,10,screen_location(*l)
+          draw_transparent_tile 5,10,screen_location(*l)
         end
       end
     end
 
-    def load_image_from_sprite_sheet sx,sy,target, ss
+    def load_image_from_sprite_sheet sx,sy, ss
       $LOGGER.info("Creating sprite for #{ss.inspect} at x:#{sx}, y#{sy}")
       rtn  = Surface.new [SPRITE_WIDTH, SPRITE_HEIGHT]
       ss.blit rtn, [0,0], [sx*SPRITE_WIDTH, sy*SPRITE_HEIGHT, SPRITE_WIDTH, SPRITE_HEIGHT]
@@ -243,7 +244,7 @@ module DCGame
     end
     def draw_from_sprite_sheet sx, sy, location, target, ss
       x,y = location
-      (@sprite_cache[[sx,sy,ss]] ||= load_image_from_sprite_sheet sx,sy,target,ss).blit target, [TILE_WIDTH*x,TILE_HEIGHT*y]
+      (@sprite_cache[[sx,sy,ss]] ||= load_image_from_sprite_sheet sx,sy,ss).blit target, [TILE_WIDTH*x,TILE_HEIGHT*y]
     end
 
     def draw_sprite sx,sy,location, target=@screen
@@ -252,6 +253,13 @@ module DCGame
     def draw_tile sx,sy,location, target=@screen
       draw_from_sprite_sheet sx,sy,location,target,@dungeon
     end
+    def draw_transparent_tile sx,sy,location
+      x,y = location
+      sur = (@sprite_cache[[sx,sy,@dungeon]] ||= load_image_from_sprite_sheet sx,sy, @dungeon)
+      sur.alpha = 100
+      sur.blit @screen, [TILE_WIDTH*x, TILE_HEIGHT*y]
+    end
+
 
     #-------------------------------
     #        INPUT METHODS
@@ -260,7 +268,7 @@ module DCGame
     def initialize_input
       @cursor = [0,0]
       @pending_action = nil
-      @actions = [InputAction.new(:a,Action::Attack), InputAction.new(:m, Action::Movement), InputAction.new(:w, Action::EndTurn)]
+      @actions = [InputAction.new(:a,Action::Attack), InputAction.new(:m, Action::Movement), InputAction.new(:w, Action::EndTurn), InputAction.new(:t, Action::Teleport)]
     end
 
     def normalize_cursor
