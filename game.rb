@@ -35,6 +35,7 @@ module DCGame
         @characters = setup
         @current_character = -1
         @movable = true
+        @dead_characters = Array.new
       end 
       def is_character_at? x,y
         @characters.any?{|c| c.location == [x,y]}
@@ -72,7 +73,6 @@ module DCGame
         @current_character = @characters.find{ |c| (c.fatigue == 0) && (c.tie_fatigue == 0) }.c_id
         @movable = true if current != current_character
       end
-
       def increase_fatigue character, amt
         character.fatigue += amt
         character.tie_fatigue = 0
@@ -80,6 +80,13 @@ module DCGame
           c.fatigue == character.fatigue && c.tie_fatigue > character.tie_fatigue
         end
         puts "Character's fatigue is set to be: #{character.fatigue} fatigue (#{character.tie_fatigue})"
+      end
+      def kill_character_by_c_id character_id
+        puts "KILL CHARACTER"
+        character_to_kill = character_by_c_id(character_id)
+        @dead_characters << character_to_kill
+        @characters.delete(character_to_kill)
+        puts "There is a character at that characters location: #{is_character_at?(*character_to_kill.location)}"
       end
     end
 
@@ -250,6 +257,12 @@ module DCGame
               state_changes << StateChange::Death.new(c.c_id)
             end
           end
+        end
+        if state_changes.size > 0
+          state_changes.each do |sc|
+            sc.activate @state
+          end
+          #state_changes += ensuing_state_changes
         end
         state_changes 
       end
