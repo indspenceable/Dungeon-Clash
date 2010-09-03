@@ -50,6 +50,10 @@ module DCGame
       @game = Client::Game.new game_name, @name, players, settings
       $LOGGER.info "Done setting the game."
     end
+
+    def add_player player
+      puts "HAHAHAHA"*5
+    end
   end
   EventMachine::run do
     $LOGGER.info "Attempting to connect to server."

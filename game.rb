@@ -162,7 +162,7 @@ module DCGame
         else 
           $LOGGER.info "Informing those connected that #{player} has joined."
           @players.reject{|p| p==player}.each do |p|
-            p.owner.send_object Message::Message.new(:add_player, connection.player.name)
+            p.owner.send_object Message::Message.new(:add_player, player.name)
           end
         end
       end
