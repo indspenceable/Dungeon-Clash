@@ -68,16 +68,6 @@ module DCGame
         state.choose_next_character_to_move!
       end
     end
-
-    #Deprecated. :)
-    class DEP_ChangeCurrentCharacter < StateChange
-      def initialize new_char
-        @new_current_character = new_char
-      end
-      def activate state
-        state.set_current_character_by_c_id @new_current_character
-      end
-    end
     class TireCurrentCharacter < StateChange
       def activate state
         state.movable = false
