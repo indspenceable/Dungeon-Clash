@@ -46,6 +46,9 @@ module DCGame
     SCREEN_WIDTH = TILE_WIDTH * TILES_WIDE
     SCREEN_HEIGHT = TILE_HEIGHT*TILES_HIGH + PANEL_HEIGHT
 
+    COLOR_BLACK = [0,0,0]
+    COLOR_WHITE = [255,255,255]
+
     #-------------------------------
     #        DISPLAY METHODS
     #-------------------------------
@@ -172,14 +175,25 @@ module DCGame
     end
 
     def draw_panel
+      if @connection.game.mode != @old_game_mode
+        @panel = nil
+      end
+      @old_game_mode = @connection.game.mode
       if !@panel
         @panel = Surface.new([SCREEN_WIDTH, PANEL_HEIGHT])
-        @panel.fill [255,255,255]
-        if @connection.game.state.is_character_at?(*@cursor) && @connection.game.shadows.lit?(*@cursor)
-          char = @connection.game.state.character_at(*@cursor)
-          @text.render("Owner is: #{char.owner}, and id: #{char.c_id}.", true, [0,0,0]).blit @panel, [0,0]
-          @text.render("Class is: #{char.job}.", true, [0,0,0]).blit @panel, [0, TEXT_SIZE]
-          @text.render("HP #{char.health}/#{char.max_health}", true, [0,0,0]).blit @panel, [0, TEXT_SIZE*2]
+        @panel.fill COLOR_BLACK
+        case @connection.game.mode
+        when :select_characters
+          @text.render("Select your characters.", true, COLOR_WHITE).blit @panel, [0,0] 
+        when :lobby
+          @text.render("Waiting for other people to join.", true, COLOR_WHITE).blit @panel, [0,0] 
+        when :in_progress
+          if @connection.game.state.is_character_at?(*@cursor) && @connection.game.shadows.lit?(*@cursor)
+            char = @connection.game.state.character_at(*@cursor)
+            @text.render("Owner is: #{char.owner}, and id: #{char.c_id}.", true, COLOR_WHITE).blit @panel, [0,0]
+            @text.render("Class is: #{char.job}.", true, COLOR_WHITE).blit @panel, [0, TEXT_SIZE]
+            @text.render("HP #{char.health}/#{char.max_health}", true, COLOR_WHITE).blit @panel, [0, TEXT_SIZE*2]
+          end
         end
       end
       @panel.blit(@screen,[0,TILES_HIGH*TILE_HEIGHT])
@@ -191,32 +205,14 @@ module DCGame
 
       #TITLE
       case @connection.game.mode
-      when :select_characters
-        @text.render("Select your characters.", true, [0,0,0]).blit @screen, [0,0]
-        offset = 40
-        @connection.game.players.each do |p|
-          @text.render(p.inspect + "is finalized: #{@connection.game.finalized_players.player_finalized? p}", true, [0,0,0]).blit @screen, [0, offset]
-          offset+=30
-        end
-      when :lobby
-        @text.render("Waiting for more players.", true, [0,0,0]).blit @screen, [0,0]
-        offset = 40
-        @connection.game.players.each do |p|
-          @text.render(p , true, [0,0,0]).blit @screen, [0, offset]
-          offset+=30
-        end
       when :in_progress
-        @text.render("Game is running.", true, [0,0,0]).blit @screen, [0,0]
+        #@text.render("Game is running.", true, [0,0,0]).blit @screen, [0,0]
         draw_units
-        #draw_shadows
-        # TODO Fix this - this should be streamlined. maybe keep draw path, but change draw_attack to
-        # draw effect. 
-        #draw_path
         draw_pending_action
-        draw_panel
         #cursor
         draw_tile 0,9, [@cursor[0]-@offset[0], @cursor[1]-@offset[1]]
       end
+      draw_panel
     end
 
     def draw_path
