@@ -14,6 +14,13 @@ module DCGame
       end
     end
     class Death < StateChange
+      def initialize unit_id
+        @unit_id = unit_id
+      end
+      def activate state
+        state.kill_character_by_c_id(@unit_id)
+        puts "killed?"
+      end
     end
     class Movement < StateChange
       attr_accessor :unit
