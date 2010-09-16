@@ -1,4 +1,4 @@
-require 'permissive_field_of_view'
+require './permissive_field_of_view'
 
 class ShadowMap
   include PermissiveFieldOfView

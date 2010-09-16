@@ -1,7 +1,7 @@
-require 'board'
-require 'shadow_map'
-require 'character'
-require 'action'
+require './board'
+require './shadow_map'
+require './character'
+require './action'
 
 module DCGame
   module Games

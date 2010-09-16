@@ -1,10 +1,9 @@
 # Contains the DCGame::ClientConnection class.
-require 'rubygems'
 require 'eventmachine'
 
-require 'message'
-require 'player'
-require 'game'
+require './message'
+require './player'
+require './game'
 
 require 'logger'
 $LOGGER = Logger.new STDOUT

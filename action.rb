@@ -1,5 +1,5 @@
-require 'state_change'
-require 'message'
+require './state_change'
+require './message'
 require 'set'
 
 module DCGame
@@ -40,6 +40,7 @@ module DCGame
       end
     end
     
+    #this teleports the current character to a location 4-5 square away from their current location.
     class Teleport < Action
       def initialize game
         @tiles = Set.new
@@ -66,28 +67,6 @@ module DCGame
       end
     end
 
-    class Charge < Action
-      def initialize game
-        @tiles = Set.new
-        x,y = game.state.current_character.location
-
-        failure = false
-        (1..4).each do |n|
-          unless game.would_path_through?(true, x+n,y)
-             failure = true
-          end
-        end
-        failure ||= (game.state.is_character_at?(x+5,y) || game.state.character_at(x+5,y).owner != game.state.current_character.owner)
-        unless failure 
-          @tiles << [x+5,y]
-        end
-      end
-      def prepare_action cursor, game
-      end
-      def enact game
-        []
-      end
-    end
     class KnockBack < Action
       def initialize game
       end

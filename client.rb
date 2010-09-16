@@ -5,15 +5,14 @@
 # Usage:
 # rsdl client.rb <PLAYER_NAME>
 
-require 'rubygems'
 require 'eventmachine'
 require 'rubygame'
 require 'logger'
 include Rubygame
 
-require 'message'
-require 'game'
-require 'interface'
+require './message'
+require './game'
+require './interface'
 
 $MYNAME = ARGV[0]
 #$LOGGER = Logger.new("logs/client_#{Time.now}_#{$MYNAME}", 'weekly')

@@ -1,7 +1,6 @@
-require 'rubygems'
 require 'rubygame'
-require 'state_change'
-require 'action'
+require './state_change'
+require './action'
 
 include Rubygame
 
@@ -264,7 +263,7 @@ module DCGame
     def initialize_input
       @cursor = [0,0]
       @pending_action = nil
-      @actions = [InputAction.new(:a,Action::Attack), InputAction.new(:m, Action::Movement), InputAction.new(:w, Action::EndTurn), InputAction.new(:t, Action::Teleport), InputAction.new(:c, Action::Charge)]
+      @actions = [InputAction.new(:a,Action::Attack), InputAction.new(:m, Action::Movement), InputAction.new(:w, Action::EndTurn), InputAction.new(:t, Action::Teleport)]
     end
 
     def normalize_cursor
