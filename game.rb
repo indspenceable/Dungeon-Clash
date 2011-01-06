@@ -196,6 +196,8 @@ module DCGame
           $LOGGER.info "All Players are finalized, so the game is starting."
           #@state.set_current_character_by_c_id @state.characters[rand @state.characters.length].c_id
           @state.characters.size.downto(1) { |n| @state.characters.push @state.characters.delete_at(rand(n)) }
+
+          #ok, now make sure each character has a unique c_id
           @state.characters.size.times do |n|
             @state.characters[n].fatigue = 0
             @state.characters[n].tie_fatigue = n
@@ -233,22 +235,29 @@ module DCGame
         return_to_lobby
       end
 
-      # is a location occupied?
-      #def passable? x,y
-      #   map.tile_at(x,y) != :empty 
-      #end
-
+      # run the action,to get the statechanges and activate them, and then do
+      # any ensuing state changes
+      # then send those results to clients.
       def action act
         state_changes = act.enact self  
+
+        state_changes << StateChange::ChooseNextCharacter.new if act.class.ends_turn 
+
         state_changes.each do |sc|
           sc.activate @state
         end
-        state_changes += ensuing_state_changes
+        ensuing_sc = ensuing_state_changes
+        ensuing_sc.each do |sc|
+          sc.activate @state
+        end
+        state_changes += ensuing_sc
         @players.each do |p|
           p.owner.send_object Message::Game.new(:accept_state_changes, state_changes)
         end
       end
 
+      # Process the state and see what side effects the actions had
+      # that, is things like timers, traps, and PEOPLE DIEING
       def ensuing_state_changes
         state_changes = Array.new
         begin
@@ -257,12 +266,6 @@ module DCGame
               state_changes << StateChange::Death.new(c.c_id)
             end
           end
-        end
-        if state_changes.size > 0
-          state_changes.each do |sc|
-            sc.activate @state
-          end
-          #state_changes += ensuing_state_changes
         end
         state_changes 
       end
@@ -347,6 +350,7 @@ module DCGame
         end
         return path
       end
+
 
       def would_path_through?(ignore_my_characters, x,y)
         return false if @map.tile_at(x,y) != :empty

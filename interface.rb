@@ -12,8 +12,8 @@ module DCGame
       @klass = klass
       @key = keysym
     end
-    def primary_action
-      @klass.primary_action
+    def secondary_action 
+      @klass.secondary_action
     end
   end
   class Interface
@@ -263,7 +263,7 @@ module DCGame
     def initialize_input
       @cursor = [0,0]
       @pending_action = nil
-      @actions = [InputAction.new(:a,Action::Attack), InputAction.new(:m, Action::Movement), InputAction.new(:w, Action::EndTurn), InputAction.new(:t, Action::Teleport)]
+      @actions = [InputAction.new(:a,Action::Attack), InputAction.new(:m, Action::Movement), InputAction.new(:w, Action::EndTurn), InputAction.new(:t, Action::Smokebomb)]
     end
 
     def normalize_cursor
@@ -280,24 +280,30 @@ module DCGame
     end
 
     #TODO this needs to be refactored like whoa
-    def process_event e 
-      if e.is_a? Events::KeyPressed
+    def process_event ev 
+      if ev.is_a? Events::KeyPressed
         @panel = nil
         #Whenever you do something on the keyboard, reset the @panel
-        @cursor[1] += 1 if e.key == :j
-        @cursor[1] -= 1 if e.key == :k
-        @cursor[0] += 1 if e.key == :l
-        @cursor[0] -= 1 if e.key == :h
+        @cursor[1] += 1 if ev.key == :j
+        @cursor[1] -= 1 if ev.key == :k
+        @cursor[0] += 1 if ev.key == :l
+        @cursor[0] -= 1 if ev.key == :h
 
-        i_action = @actions.find{|a| a.key == e.key}
-        if i_action && (@connection.game.state.movable || !i_action.primary_action)
-          if !@pending_action.is_a?(i_action.klass)
-            if i_action.klass.no_confirm
-              @connection.send_object Message::Game.new(:action, i_action.klass.new(@connection.game))
+        #find the action for the key we pressed
+        input_action = @actions.find{|act| act.key == ev.key}
+        # if it exists, and we're either at the primary action state of the game or this is
+        # a secondary action, continue
+        if input_action && (@connection.game.state.movable || input_action.secondary_action)
+          #if we alaready pressed a different key, either do that if its instant, or pend
+          #that action
+          if !@pending_action.is_a?(input_action.klass)
+            if input_action.klass.no_confirm
+              @connection.send_object Message::Game.new(:action, input_action.klass.new(@connection.game))
             else
-              @pending_action = i_action.klass.new @connection.game
+              @pending_action = input_action.klass.new @connection.game
             end
           elsif @pending_action.highlights.include? @cursor
+            #else, if we're on a suitable square, do the action
             @connection.send_object Message::Game.new(:action,@pending_action.prep(@cursor, @connection.game))
             @pending_action = nil
           end

@@ -1,7 +1,8 @@
 # Contains the DCGame::Character class.
 
+#Namespace for dungeonclash
 module DCGame
-  # This represents a character in either a local instance or a server instance of a game.
+   # This represents a character in either a local instance or a server instance of a game.
   class Character
     # The name of this unit's owner.
     attr_reader :owner
@@ -17,6 +18,7 @@ module DCGame
     # These keep track of turn order.
     attr_accessor :fatigue, :tie_fatigue
     attr_accessor :health, :max_health
+
     #@@c_id = 0
     # Create a class. Provide the unmutable information and starting statistics for this character.
     # [owner] The name of the player that owns this character
@@ -30,9 +32,9 @@ module DCGame
       @location = location
       @health = 10
       @max_health = 10
-      #@c_id = (@@c_id += 1) 
       @c_id = 0
     end
+
     def set_c_id x
       @c_id = x
     end

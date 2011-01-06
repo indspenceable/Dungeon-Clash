@@ -9,16 +9,18 @@ module DCGame
     # different permutation. Actions talk to the game state, the interface, AND the server.
     # so, they could potentially be restructured? But I'm unsure how would make sense.
     class Action
-      #Get the list of tiles to highlight in the interface.
+      # Get the list of tiles to highlight in the interface.
       def highlights
         @tiles
       end
-      #Does the player need to confirm this action? Examples where this will be overridden - ENDTURN, WAIT
+      # Does the player need to confirm this action? 
+      # Examples where this will be overridden - ENDTURN, WAIT
       def self.no_confirm
         false
       end
-      #Figure out how the gamestate will change, by looking at the gamestate on the server. Generate
+      # Figure out how the gamestate will change, by looking at the gamestate on the server. Generate
       # the appropriate series of StateChange s.
+      # an action has an enact method, which applies it to the game, and then returns a StateChange
       def enact game
         raise "enact not overwritten for #{self.class}."
       end
@@ -27,21 +29,25 @@ module DCGame
         prepare_action cursor, game
         self
       end
-      #an action has an enact method, which applies it to the game, and then returns a StateChange
-      def enact game
-        raise "enact method not overwritten in #{self.class}"
-      end
+
       def prepare_action cursor, game
         raise "prepare_action method not overwritten in #{self.class}"
       end
 
-      def self.primary_action
+      #You can do this after a primary action?
+      
+      def self.secondary_action
+        false
+      end
+      
+      #after you do this action, your turn ends instantly.
+      def self.ends_turn
         true
       end
     end
     
-    #this teleports the current character to a location 4-5 square away from their current location.
-    class Teleport < Action
+    # This attack teleports the user 4-5 spaces away. Possibly through walls.
+    class Smokebomb < Action
       def initialize game
         @tiles = Set.new
         cx,cy = game.state.current_character.location
@@ -67,15 +73,19 @@ module DCGame
       end
     end
 
-    class KnockBack < Action
-      def initialize game
+    class Root < Action
+      def intiialize game
+        @tiles = Set.new
+        @tiles << game.state.current_character.location
+      end
+
+
+      def self.ends_turn
+        false
       end
     end
-    class Slam < Action
-    end
-    class JumpStrike < Action
-    end
 
+    # END THE TURN!!!!
     class EndTurn < Action
       def initialize game
         @highlights = 0
@@ -83,8 +93,8 @@ module DCGame
       def self.no_confirm
         true
       end
-      def self.primary_action
-        false
+      def self.secondary_action
+        true
       end
       def enact game
         #game.state.choose_next_character_to_move!
@@ -92,6 +102,7 @@ module DCGame
       end
     end
 
+    # attack someone next to you.
     class Attack < Action
       def initialize game
         x,y = game.state.current_character.location
@@ -106,13 +117,15 @@ module DCGame
         @target_id = game.state.character_at(*cursor).c_id
       end
       def enact game 
-        #game.state.character_by_c_id(@target_id).health -= 3
+        #TODO - 3 needs to become the correct ammount.
         [StateChange::DealDamage.new(3,@target_id), StateChange::IncreaseFatigue.new(3, game.state.current_character.c_id)]
       end
-      def self.primary_action
-        false
+      def self.secondary_action
+        true
       end
     end
+
+    # MOVE!
     class Movement < Action
       def initialize game
         open_list = Array.new << [game.state.current_character.location, []]
@@ -165,22 +178,20 @@ module DCGame
           end
         end
 
-        #game.state.increase_fatigue(game.state.current_character,
-        #                            actual_move_path.size*game.cost_per_move(game.state.current_character))
-        
-
-        #game.state.current_character.location = actual_move_path.last
         state_changes << StateChange::Movement.new(actual_move_path, game.state.current_character.c_id)
         state_changes << StateChange::IncreaseFatigue.new(actual_move_path.size*game.cost_per_move(game.state.current_character), game.state.current_character.c_id)
 
+        #If we successfully moved, then tire them. Otherwise, move onto the next character
         if success
           state_changes << StateChange::TireCurrentCharacter.new()
         else
-          #game.state.choose_next_character_to_move!
-          #state_changes << StateChange::ChangeCurrentCharacter.new(game.state.current_character.c_id)
+          #Add the exclamation point?
           state_changes << StateChange::ChooseNextCharacter.new()
         end
         state_changes
+      end
+      def self.ends_turn
+        false
       end
     end
   end
