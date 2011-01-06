@@ -9,10 +9,10 @@ Initially, there will just be both players units in the dungon, but eventually I
 * monsters
 * and more.
 
-I'm using Oryx's lo-fi roguelike sprites (http://forums.tigsource.com/index.php?topic=8970.0) and the permissive field of view implementation as seen on roguebasin (http://roguebasin.roguelikedevelopment.org/index.php?title=Ruby_precise_permissive_FOV_implementation). Both of these resources are sweet and better than I could make.
+This project uses [Oryx's lo-fi roguelike sprites](http://forums.tigsource.com/index.php?topic=8970.0) and the [permissive field of view implementation as seen on roguebasin](http://roguebasin.roguelikedevelopment.org/index.php?title=Ruby_precise_permissive_FOV_implementation). Both of these resources are sweet and better than I could make.
 
 Usage
 -----
 
-You will need 3 terminals for this. Right now, the game automatically connects to localhost - I plan to change this, eventually, when I get to the point where I have a full game put together. Anyway, for now, run `ruby server.rb`, and two instances of 'rsdl client.rb <player name>'
+You will need 3 terminals for this. Right now, the game automatically connects to localhost - I plan to change this, eventually, when I get to the point where I have a full game put together. Anyway, for now, run `ruby server.rb`, and two instances of `rsdl client.rb <player name>`
 
