@@ -14,6 +14,7 @@ The Ninja
 * special moves
     * He can throw shruikans 3-7 (10?) spaces away
     * He can vanish and appear a number of spaces away (possibly through walls, though)
+        * This is done
 
 The Ent
 -------
@@ -21,6 +22,7 @@ The Ent
 * He deals large damage, but again, it is pretty slow.
 * Special Moves
     * Root -> Instead of moving, he can heal some damage, and still have the oppertunity to attack afterwards.
+        * this is done.
     * Uproot: Within a certain radius, he can hit any square. Does solid damage, but less than his attack does.
 
 Robot
