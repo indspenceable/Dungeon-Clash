@@ -223,11 +223,9 @@ module DCGame
     end
 
     def draw_pending_action
-      if @pending_action
-        @pending_action.highlights.each do |l|
-          draw_transparent_tile 5,10,screen_location(*l)
-        end
-      end
+      @pending_action.highlights.each do |l|
+        draw_transparent_tile 5,10,screen_location(*l)
+      end if @pending_action
     end
 
     def load_image_from_sprite_sheet sx,sy, ss
@@ -263,7 +261,8 @@ module DCGame
     def initialize_input
       @cursor = [0,0]
       @pending_action = nil
-      @actions = [InputAction.new(:a,Action::Attack), InputAction.new(:m, Action::Movement), InputAction.new(:w, Action::EndTurn), InputAction.new(:t, Action::Smokebomb)]
+      #shouldn't this just be... a hash?
+      @actions = [InputAction.new(:a,Action::Attack), InputAction.new(:m, Action::Movement), InputAction.new(:w, Action::EndTurn), InputAction.new(:t, Action::Smokebomb), InputAction.new(:r, Action::Root)]
     end
 
     def normalize_cursor

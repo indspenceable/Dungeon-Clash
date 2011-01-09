@@ -19,7 +19,18 @@ module DCGame
       end
       def activate state
         state.kill_character_by_c_id(@unit_id)
-        puts "killed?"
+      end
+    end
+    class Heal < StateChange
+      def initialize unit_id, amt
+        puts "AMT is #{amt} unit is #{unit_id}"
+        @amt = amt
+        @unit_id = unit_id
+      end
+      def activate state
+        char = state.character_by_c_id(@unit_id)
+        char.health += @amt
+        char.health = char.max_health if char.health > char.max_health
       end
     end
     class Movement < StateChange

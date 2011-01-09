@@ -241,6 +241,7 @@ module DCGame
       def action act
         state_changes = act.enact self  
 
+        state_changes << StateChange::TireCurrentCharacter.new if act.class.tires_character
         state_changes << StateChange::ChooseNextCharacter.new if act.class.ends_turn 
 
         state_changes.each do |sc|
