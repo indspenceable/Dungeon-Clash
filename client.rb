@@ -11,7 +11,7 @@ require 'logger'
 include Rubygame
 
 require './message'
-require './game'
+require './client_game'
 require './interface'
 
 $MYNAME = ARGV[0]
@@ -24,13 +24,13 @@ module DCGame
     include EM::P::ObjectProtocol
     attr_accessor :name, :game, :game_list
 
+    # Methods for the EM Connection
     def initialize name
       @name = name
       @game = nil
     end
-    def post_init
+    def post_init; end
 
-    end
     def receive_object data
       data.exec self
     end
@@ -39,6 +39,7 @@ module DCGame
       EventMachine::stop_event_loop
     end
   
+    #the server will send an object which will do this
     def fail
       $LOGGER.info "Failed to join game, serverside. Aborting."
       EventMachine::stop_event_loop
@@ -48,10 +49,6 @@ module DCGame
       $LOGGER.info "Setting the game."
       @game = Client::Game.new game_name, @name, players, settings
       $LOGGER.info "Done setting the game."
-    end
-
-    def add_player player
-      puts "HAHAHAHA"*5
     end
   end
   EventMachine::run do
@@ -67,39 +64,16 @@ module DCGame
       controller = graphics
 
       recent_times = [] 
-      EventMachine::PeriodicTimer.new 1.0/600.0 do 
-        #recent_times << Time.now
-        #if recent_times.size == 20
-        #  avg = Array.new
-        #  recent_times.each_cons(2) do |x|
-        #    avg << (x[1]-x[0])
-        #  end
-        #  puts "average: #{avg.inject(0){|total,current| total += current} / recent_times.size}"
-        #  recent_times = Array.new
-        #end
-
-
+      #limit framerate
+      EventMachine::PeriodicTimer.new 1.0/300.0 do 
         #process events
         queue.each do |e|
           EventMachine::stop_event_loop if e.is_a? Events::QuitRequested
-          if e.is_a?(Events::KeyPressed) && c.game && c.game.mode == :select_characters
-            
-            $LOGGER.info "This player has chosen characters."
-            c.send_object Message::ChooseCharacters.new []
-          else
-            #TODO don't process keys until the game is connected.
             controller.process_event e
-          end
         end
 
-        #draw
-        if c.game
-          graphics.draw c.game
-        else
-          #TODO graphics.draw_connecting_screen
-          #graphics.draw c.game_list 
-        end
-
+        # if we are in a game, draw it.
+        graphics.draw if c.game
       end
     end
   end

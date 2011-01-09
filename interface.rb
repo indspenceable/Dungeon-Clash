@@ -45,6 +45,12 @@ module DCGame
     SCREEN_WIDTH = TILE_WIDTH * TILES_WIDE
     SCREEN_HEIGHT = TILE_HEIGHT*TILES_HIGH + PANEL_HEIGHT
 
+    FOG_OF_WAR = [0,0,0]
+    ACCETABLE_MOVE = [0,255,0]
+
+    FRIEND = [0,150,255]
+    FOE = [255,0,0]
+
     COLOR_BLACK = [0,0,0]
     COLOR_WHITE = [255,255,255]
 
@@ -52,6 +58,9 @@ module DCGame
     #        DISPLAY METHODS
     #-------------------------------
 
+    # Set up the display part of the interface
+    # VHAAAT? THIS SHOULD BE ITS OWN CLASS?
+    # BLASPHEMY.
     def initialize_output
       # TEXT
       TTF.setup
@@ -63,6 +72,7 @@ module DCGame
       @dungeon = Surface.load 'dungeon.png'
       @dungeon.set_colorkey [255,255,255]
       @sprite_cache = Hash.new
+      @color_cache = {}
 
       #screen
       @screen = Screen.new [SCREEN_WIDTH, SCREEN_HEIGHT]
@@ -72,7 +82,8 @@ module DCGame
       @pending_action = nil
     end
 
-    def draw target
+    # Draw a gamestate
+    def draw
       #if we need a state_change, ask for one
       @state_change = @connection.game.get_next_state_change unless @state_change
       #assuming we have one, if its finished activate it and ask for another
@@ -86,21 +97,23 @@ module DCGame
       @state_change.step if @state_change
 
       @screen.fill [255, 255, 255]
-      if target.is_a? Client::Game
-        draw_game
-      end
+      draw_game
       @screen.update
     end
 
+    # Draw the map
     def draw_map
+      #TODO -seperate this into its own method.
       unless @prerendered_map
         game = @connection.game
         @prerendered_map = Surface.new [TILE_WIDTH * game.map.width, TILE_HEIGHT * game.map.height]
         game.map.width.times do |x|
           game.map.height.times do |y|
             if game.map.tile_at(x,y) != :empty
+              #TODO fix this
               draw_tile 0,0, [x, y], @prerendered_map
             else
+              #TODO Fix this
               draw_tile 12,0, [x, y], @prerendered_map
             end
           end
@@ -109,6 +122,7 @@ module DCGame
       @prerendered_map.blit @screen, [@offset[0]*-TILE_WIDTH, @offset[1]*-TILE_HEIGHT]
     end
 
+    #
     def on_screen? x,y
       x >= @offset[0] && x < @offset[0]+TILES_WIDE &&
         y >= @offset[1] && y < @offset[1]+TILES_WIDE
@@ -129,12 +143,35 @@ module DCGame
         end
       else
         if character.owner == @name
-          [5,6]
+          @connection.game.sprite_location_for_class(character.job)
         else
           #their guys
-          [6,6]
+          @connection.game.sprite_location_for_class(character.job)
         end
       end
+    end
+
+    def draw_selecting_characters
+      @connection.game.my_character_locations.each do |loc, char|
+        #if this is the current location
+        if @connection.game.my_character_locations[@current_selection_location][0] == loc
+          #TODO draw GREEN
+          draw_sprite 3,1,screen_location(*loc)
+        else
+          #TODO draw BLUE
+          draw_sprite 1,3,screen_location(*loc)
+        end
+
+
+        #cx,cy = get_sprite_for_character(char)
+        cx,cy = @connection.game.character_templates[char].sprite
+        draw_sprite cx,cy,screen_location(*loc)
+      end
+    end
+
+    def draw_shadow loc
+      #draw_tile 5,9, loc
+      draw_color_tile FOG_OF_WAR, screen_location(*loc), 50
     end
 
     #TODO rename to draw_characters
@@ -145,22 +182,23 @@ module DCGame
         game.map.height.times do |y|
           if on_screen? x,y
             if !game.shadows.lit?(x,y)
-              draw_tile 5,9, screen_location(x,y)
+              #draw a shadow
+              #draw_tile 5,9, screen_location(x,y)
+              draw_shadow screen_location(x,y)
             else
-              #if game.state.is_character_at?(x,y) && @state_change && @state_change.is_a?(StateChange::Movement) && game.state.character_at(x,y) == @state_change.unit
               if character_to_draw?(x,y)
                 current_character = game.state.character_at x,y
                 cx,cy = get_sprite_for_character current_character 
+
+                draw_color_tile (current_character.owner == @name ? FRIEND : FOE), screen_location(x,y), 100
                 draw_sprite cx,cy,screen_location(x,y)
               end
             end
           end
         end
         if @state_change && @state_change.is_a?(StateChange::Movement)
-          #current_character = game.state.character_at x,y
           current_character = game.state.character_by_c_id @state_change.unit
           cx,cy = get_sprite_for_character current_character 
-          #puts "Current location is: #{@state_change.current_location.inspect}"
           x,y = @state_change.current_location
           draw_sprite cx,cy,screen_location(*@state_change.current_location) if game.shadows.lit?(x,y) || current_character.owner == @name
         end
@@ -204,6 +242,8 @@ module DCGame
 
       #TITLE
       case @connection.game.mode
+      when :select_characters
+        draw_selecting_characters
       when :in_progress
         #@text.render("Game is running.", true, [0,0,0]).blit @screen, [0,0]
         draw_units
@@ -224,7 +264,8 @@ module DCGame
 
     def draw_pending_action
       @pending_action.highlights.each do |l|
-        draw_transparent_tile 5,10,screen_location(*l)
+        #draw_transparent_tile 5,10,screen_location(*l)
+        draw_color_tile [0,255,0], screen_location(*l), 50
       end if @pending_action
     end
 
@@ -246,6 +287,16 @@ module DCGame
     def draw_tile sx,sy,location, target=@screen
       draw_from_sprite_sheet sx,sy,location,target,@dungeon
     end
+    def draw_color_tile color, location, opacity=255, target=@screen
+      x,y = location
+      unless @color_cache[color]
+        @color_cache[color] = Surface.new [TILE_WIDTH, TILE_HEIGHT]
+        @color_cache[color].fill color
+      end
+      surf = @color_cache[color]
+      surf.alpha = opacity
+      surf.blit(target, [TILE_WIDTH*x, TILE_HEIGHT*y])
+    end
     def draw_transparent_tile sx,sy,location
       x,y = location
       sur = (@sprite_cache[[sx,sy,@dungeon]] ||= load_image_from_sprite_sheet sx,sy, @dungeon)
@@ -261,8 +312,12 @@ module DCGame
     def initialize_input
       @cursor = [0,0]
       @pending_action = nil
+
+      @select_character = 0
+      @current_selection_location = 0
+
       #shouldn't this just be... a hash?
-      @actions = [InputAction.new(:a,Action::Attack), InputAction.new(:m, Action::Movement), InputAction.new(:w, Action::EndTurn), InputAction.new(:t, Action::Smokebomb), InputAction.new(:r, Action::Root)]
+      @actions = [InputAction.new(:a,Action::Attack), InputAction.new(:m, Action::Movement), InputAction.new(:w, Action::EndTurn), InputAction.new(:t, Action::Smokebomb), InputAction.new(:r, Action::TakeRoot)]
     end
 
     def normalize_cursor
@@ -278,8 +333,45 @@ module DCGame
       @offset[1] += 1 while @cursor[1] >= (@offset[1] + TILES_HIGH)
     end
 
+    def process_event ev
+      case @connection.game.mode
+      when :in_progress then process_in_progress_event(ev) and return
+      when :select_characters then process_select_character_event(ev) and return
+      end
+    end
+
+    def  process_select_character_event ev
+      if ev.is_a? Events::KeyPressed
+        case ev.key
+        when :up 
+          @connection.game.my_character_locations[@current_selection_location][1] += 1
+          @connection.game.my_character_locations[@current_selection_location][1] = 0 if @connection.game.my_character_locations[@current_selection_location][1] >= @connection.game.character_templates.size
+          return
+        when :down 
+          @connection.game.my_character_locations[@current_selection_location][1] -= 1
+          @connection.game.my_character_locations[@current_selection_location][1] = @connection.game.character_templates.size-1 if @connection.game.my_character_locations[@current_selection_location][1] < 0
+          return
+        when :right 
+          @current_selection_location += 1
+          @current_selection_location -= @connection.game.my_character_locations.size if @current_selection_location >= @connection.game.my_character_locations.size
+          return
+        when :left 
+          @current_selection_location -= 1
+          @current_selection_location += @connection.game.my_character_locations.size if @current_selection_location < 0
+          return
+          #when :space then @connection.send_object(Message::ChooseCharacters.new([Character.new(@name, "soldier", [], [rand(15),rand(15)])])) and return
+        when :space 
+          @connection.send_object(Message::ChooseCharacters.new(@connection.game.my_character_locations.map do |loc,t| 
+            Character.new(@name, @connection.game.character_templates[t].name, #@connection.game.character_templates[t].moves, loc) 
+                          [],loc)
+          end ))
+        end
+      end
+    end
+
     #TODO this needs to be refactored like whoa
-    def process_event ev 
+    #
+    def process_in_progress_event ev 
       if ev.is_a? Events::KeyPressed
         @panel = nil
         #Whenever you do something on the keyboard, reset the @panel
@@ -290,6 +382,7 @@ module DCGame
 
         #find the action for the key we pressed
         input_action = @actions.find{|act| act.key == ev.key}
+        input_action = nil if @connection.game.state.current_character.owner != @name
         # if it exists, and we're either at the primary action state of the game or this is
         # a secondary action, continue
         if input_action && (@connection.game.state.movable || input_action.secondary_action)

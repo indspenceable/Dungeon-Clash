@@ -125,6 +125,9 @@ module DCGame
         # lol, doesn't do anything.
         []
       end
+      def self.tires_character
+        false
+      end
       def self.ends_turn
         true
       end

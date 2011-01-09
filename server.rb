@@ -3,7 +3,7 @@ require 'eventmachine'
 
 require './message'
 require './player'
-require './game'
+require './server_game'
 
 require 'logger'
 $LOGGER = Logger.new STDOUT

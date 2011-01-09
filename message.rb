@@ -135,9 +135,10 @@ module DCGame
     class PlayerFinalized
       def initialize playername
         @pname = playername
+        #@chars = chars
       end
       def exec client
-        client.game.set_player_finalized @pname
+        client.game.set_player_finalized @pname#, chars
       end
     end
     class ChooseCharacters
@@ -147,7 +148,7 @@ module DCGame
       def exec connection
         #TODO
         #confirm that characters are valid?
-        connection.game.set_player_finalized connection.player
+        connection.game.set_player_finalized connection.player, @chars
       end
     end
   end
