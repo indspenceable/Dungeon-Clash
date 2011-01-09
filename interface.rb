@@ -337,7 +337,7 @@ module DCGame
       case @connection.game.mode
       when :in_progress then process_in_progress_event(ev) and return
       when :select_characters then process_select_character_event(ev) and return
-      end
+      end if @connection.game
     end
 
     def  process_select_character_event ev

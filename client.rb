@@ -14,6 +14,8 @@ require './message'
 require './client_game'
 require './interface'
 
+IP = "192.168.1.49"
+
 $MYNAME = ARGV[0]
 #$LOGGER = Logger.new("logs/client_#{Time.now}_#{$MYNAME}", 'weekly')
 $LOGGER = Logger.new STDOUT
@@ -53,7 +55,7 @@ module DCGame
   end
   EventMachine::run do
     $LOGGER.info "Attempting to connect to server."
-    EventMachine::connect "127.0.0.1", 8801, ServerConnection, $MYNAME do |c|
+    EventMachine::connect IP, 8801, ServerConnection, $MYNAME do |c|
       $LOGGER.info "Connected."
 
       #initialize
